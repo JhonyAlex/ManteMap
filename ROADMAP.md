@@ -1,0 +1,199 @@
+# ROADMAP — ManteMap
+
+Hoja de ruta de desarrollo por fases.
+
+---
+
+## Fase 0 — Descubrimiento y arquitectura 🔄
+
+**Objetivo**: Establecer la base técnica y estructura del proyecto.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Análisis del proyecto | ✅ Completado | PROMPT MAESTRO analizado y arquitectura propuesta |
+| Arquitectura definida | ✅ Completado | Stack, patrones y estructura documentados |
+| Modelo de datos inicial | ✅ Completado | Schema Prisma base con User, Project |
+| ADR principales | ✅ Completado | ADR-001 a ADR-004 creados |
+| Estructura del repositorio | ✅ Completado | Monorepo con apps/ y packages/ |
+| AGENTS.md | ✅ Completado | Guía completa para IAs |
+| ROADMAP.md | ✅ Completado | Este archivo |
+| Entorno Docker | 🔄 En progreso | PostgreSQL levanta con docker compose |
+| Base de datos conectada | 🔄 En progreso | Prisma conecta y ejecuta migraciones |
+| Aplicación mínima ejecutándose | 🔄 En progreso | Next.js levanta en localhost:3000 |
+| Lint + Typecheck + Tests básicos | ⬜ Pendiente | Pasan sin errores |
+| Build de producción | ⬜ Pendiente | `pnpm build` completa sin errores |
+
+**Criterio de cierre**:
+- ✅ El proyecto levanta correctamente
+- ✅ La base de datos responde
+- ✅ Lint, typecheck y pruebas básicas funcionan
+- ✅ La documentación explica cómo continuar
+
+**Dependencias**: Ninguna (es la fase inicial).
+
+---
+
+## Fase 1 — Usuarios y proyectos
+
+**Objetivo**: Autenticación, gestión de usuarios y proyectos.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Autenticación (login/logout) | ⬜ Pendiente | Sesión se crea y destruye correctamente |
+| Registro de usuarios | ⬜ Pendiente | Nuevo usuario puede crear cuenta |
+| Roles básicos | ⬜ Pendiente | Admin, Gestor, Técnico, Consulta |
+| CRUD de proyectos | ⬜ Pendiente | Crear, leer, actualizar, archivar proyectos |
+| Acceso por proyecto | ⬜ Pendiente | Usuario solo ve proyectos asignados |
+| Layout principal | ⬜ Pendiente | Sidebar, breadcrumbs, contenido responsive |
+| Permisos en servidor | ⬜ Pendiente | API valida permisos antes de ejecutar |
+
+**Dependencias**: Fase 0 completada.
+
+---
+
+## Fase 2 — Tipos, campos y estados
+
+**Objetivo**: Sistema configurable de tipos de ítems con campos dinámicos.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Tipos de ítem CRUD | ⬜ Pendiente | Crear/editar tipos por proyecto |
+| Definición de campos dinámicos | ⬜ Pendiente | 18 tipos de campo soportados |
+| Estados configurables | ⬜ Pendiente | Estados por tipo con colores e iconos |
+| Formularios generados | ⬜ Pendiente | Formulario se genera desde definición |
+| Validación de campos | ⬜ Pendiente | Zod valida según definición del campo |
+
+**Dependencias**: Fase 1 completada.
+
+---
+
+## Fase 3 — Ítems
+
+**Objetivo**: Gestión completa de ítems/activos.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| CRUD de ítems | ⬜ Pendiente | Crear, editar, eliminar ítems |
+| Ficha del ítem | ⬜ Pendiente | Vista completa con pestañas |
+| Listado con filtros | ⬜ Pendiente | Búsqueda, filtros, orden, paginación |
+| Historial básico | ⬜ Pendiente | Cambios registrados automáticamente |
+
+**Dependencias**: Fase 2 completada.
+
+---
+
+## Fase 4 — Documentos
+
+**Objetivo**: Gestión documental con vencimientos.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Subida de archivos | ⬜ Pendiente | Upload a almacenamiento local/S3 |
+| Metadatos de documentos | ⬜ Pendiente | Nombre, tipo, fechas, versión |
+| Vencimientos | ⬜ Pendiente | Fecha de vencimiento con alertas |
+| Versiones iniciales | ⬜ Pendiente | Historial de reemplazos |
+
+**Dependencias**: Fase 3 completada.
+
+---
+
+## Fase 5 — Eventos y calendario
+
+**Objetivo**: Sistema de eventos con recurrencia y calendario.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Eventos CRUD | ⬜ Pendiente | Crear/editar eventos por ítem |
+| Recurrencia | ⬜ Pendiente | Múltiples patrones soportados |
+| Calendario | ⬜ Pendiente | Vista de día/semana/mes |
+| Alertas internas | ⬜ Pendiente | Notificaciones por vencimientos |
+
+**Dependencias**: Fase 3 completada.
+
+---
+
+## Fase 6 — Ubicaciones
+
+**Objetivo**: Jerarquía de ubicaciones y movimiento de ítems.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Jerarquía de ubicaciones | ⬜ Pendiente | Centro > Edificio > Planta > Área > Subárea |
+| Movimiento de ítems | ⬜ Pendiente | Mover entre ubicaciones con historial |
+| Historial de ubicación | ⬜ Pendiente | Traza completa de cambios |
+
+**Dependencias**: Fase 3 completada.
+
+---
+
+## Fase 7 — Planos
+
+**Objetivo**: Planos interactivos con marcadores.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Subida de planos | ⬜ Pendiente | PNG, JPG, WEBP, SVG |
+| Visualización | ⬜ Pendiente | Zoom, pan, responsive |
+| Marcadores | ⬜ Pendiente | Posicionar ítems con coordenadas normalizadas |
+| Modo edición | ⬜ Pendiente | Arrastrar/mover marcadores |
+| Filtros en plano | ⬜ Pendiente | Filtrar por tipo, estado, capa |
+| Acceso a ficha | ⬜ Pendiente | Click en marcador abre ficha |
+
+**Dependencias**: Fase 3 y Fase 6 completadas.
+
+---
+
+## Fase 8 — Panel e informes
+
+**Objetivo**: Dashboard con indicadores y exportación.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Dashboard principal | ⬜ Pendiente | KPIs, vencimientos, actividad |
+| Indicadores | ⬜ Pendiente | Ítems activos/inactivos, docs pendientes |
+| Exportación CSV | ⬜ Pendiente | Exportar listados filtrados |
+
+**Dependencias**: Fase 3 completada.
+
+---
+
+## Fase 9 — Funciones avanzadas
+
+**Objetivo**: Funcionalidades extendidas.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Códigos QR | ⬜ Evaluar | QR imprimible por ítem |
+| Inspecciones móviles | ⬜ Evaluar | Escanear QR → ver ficha |
+| Webhooks | ⬜ Evaluar | Notificaciones a sistemas externos |
+| Notificaciones externas | ⬜ Evaluar | Email, Teams, Slack, Telegram |
+| Polígonos en planos | ⬜ Evaluar | Dibujar zonas interactivas |
+| Capas | ⬜ Evaluar | Filtrar por capas temáticas |
+| Exportación PDF | ⬜ Evaluar | Fichas e informes en PDF |
+| OCR / IA documental | ⬜ Evaluar | Extracción automática de fechas |
+
+**Dependencias**: Fase 8 completada.
+
+---
+
+## MVP
+
+El MVP corresponde a las **Fases 0–7** completas.
+
+Debe permitir:
+1. Iniciar sesión
+2. Crear proyecto
+3. Crear tipo de ítem con campos personalizados
+4. Crear estados
+5. Crear ítems
+6. Adjuntar documentos
+7. Crear eventos con recurrencia
+8. Ver calendario
+9. Crear ubicaciones
+10. Subir planos y posicionar ítems
+11. Abrir ficha desde el plano
+12. Consultar historial
+
+---
+
+> **Última actualización**: 2026-07-15

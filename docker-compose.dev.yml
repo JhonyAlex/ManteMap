@@ -1,0 +1,30 @@
+# ===========================================
+# ManteMap — Docker Compose (Desarrollo)
+# ===========================================
+# Levantar: docker compose -f docker-compose.dev.yml up -d
+# Detener: docker compose -f docker-compose.dev.yml down
+# Volúmenes: docker compose -f docker-compose.dev.yml down -v (elimina datos)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mantemap-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-mantemap}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mantemap}
+      POSTGRES_DB: ${DB_NAME:-mantemap}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mantemap} -d ${DB_NAME:-mantemap}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+    driver: local
