@@ -29,9 +29,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts  Account[]
-  sessions  Session[]
-  projects  ProjectMember[]
+  accounts       Account[]
+  sessions       Session[]
+  projects       ProjectMember[]
+  ownedProjects  Project[]
 
   @@map("users")
 }

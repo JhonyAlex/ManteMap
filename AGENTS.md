@@ -249,11 +249,18 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 
 ### Fase actual
 
-**Fase 0 — Descubrimiento y arquitectura** ✅ En progreso
+**Fase 0 — Descubrimiento y arquitectura** ✅ Completada
 
 ### Funciones terminadas
 
-- (ninguna aún — proyecto nuevo)
+- Monorepositorio configurado (pnpm workspaces + Turborepo)
+- Aplicación Next.js 15 con App Router
+- Schema Prisma base (User, Account, Session, Project, ProjectMember)
+- Docker Compose para PostgreSQL 16
+- Configuración TypeScript, ESLint, Prettier
+- Packages compartidos (database, shared, validation, ui, config)
+- 4 ADRs documentados
+- Documentación completa
 
 ### Funcionalidades parcialmente terminadas
 

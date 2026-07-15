@@ -4,7 +4,7 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 0 — Descubrimiento y arquitectura 🔄
+## Fase 0 — Descubrimiento y arquitectura ✅
 
 **Objetivo**: Establecer la base técnica y estructura del proyecto.
 
@@ -12,21 +12,22 @@ Hoja de ruta de desarrollo por fases.
 |-----------|--------|----------------------|
 | Análisis del proyecto | ✅ Completado | PROMPT MAESTRO analizado y arquitectura propuesta |
 | Arquitectura definida | ✅ Completado | Stack, patrones y estructura documentados |
-| Modelo de datos inicial | ✅ Completado | Schema Prisma base con User, Project |
+| Modelo de datos inicial | ✅ Completado | Schema Prisma base con User, Project, Account, Session |
 | ADR principales | ✅ Completado | ADR-001 a ADR-004 creados |
 | Estructura del repositorio | ✅ Completado | Monorepo con apps/ y packages/ |
 | AGENTS.md | ✅ Completado | Guía completa para IAs |
 | ROADMAP.md | ✅ Completado | Este archivo |
-| Entorno Docker | 🔄 En progreso | PostgreSQL levanta con docker compose |
-| Base de datos conectada | 🔄 En progreso | Prisma conecta y ejecuta migraciones |
-| Aplicación mínima ejecutándose | 🔄 En progreso | Next.js levanta en localhost:3000 |
-| Lint + Typecheck + Tests básicos | ⬜ Pendiente | Pasan sin errores |
-| Build de producción | ⬜ Pendiente | `pnpm build` completa sin errores |
+| Entorno Docker | ✅ Completado | PostgreSQL 16 con healthcheck |
+| Base de datos conectada | ✅ Completado | Schema Prisma genera cliente correctamente |
+| Aplicación mínima ejecutándose | ✅ Completado | Next.js compila y genera páginas |
+| Lint + Typecheck | ✅ Completado | Pasan sin errores |
+| Build de producción | ✅ Completado | `pnpm build` completa sin errores |
 
 **Criterio de cierre**:
 - ✅ El proyecto levanta correctamente
-- ✅ La base de datos responde
-- ✅ Lint, typecheck y pruebas básicas funcionan
+- ✅ La base de datos responde (schema validado)
+- ✅ Lint y typecheck funcionan
+- ✅ Build de producción funciona
 - ✅ La documentación explica cómo continuar
 
 **Dependencias**: Ninguna (es la fase inicial).

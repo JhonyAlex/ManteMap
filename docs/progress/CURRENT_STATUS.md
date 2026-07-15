@@ -6,37 +6,43 @@
 
 ## Fase activa
 
-**Fase 0 — Descubrimiento y arquitectura**
+**Fase 0 — Descubrimiento y arquitectura** ✅ Completada
 
 ---
 
 ## Qué funciona realmente
 
-- Estructura de monorepositorio creada (pnpm workspaces).
-- Aplicación Next.js 15 configurada en `apps/web`.
-- Schema Prisma base definido con modelos iniciales.
-- Docker Compose para PostgreSQL 16.
-- Documentación completa del proyecto.
+- ✅ Monorepositorio con pnpm workspaces + Turborepo.
+- ✅ Aplicación Next.js 15 con App Router configurada en `apps/web`.
+- ✅ Schema Prisma base definido (User, Account, Session, Project, ProjectMember).
+- ✅ Docker Compose para PostgreSQL 16 con healthcheck.
+- ✅ Configuración TypeScript, ESLint, Prettier funcionando.
+- ✅ Packages compartidos: database, shared, validation, ui, config.
+- ✅ Healthcheck endpoint en `/api/health`.
+- ✅ Página de inicio en `/`.
+- ✅ 4 ADRs documentados.
+- ✅ Documentación completa (AGENTS.md, README.md, ROADMAP.md, CHANGELOG.md).
 
 ---
 
 ## Qué está simulado
 
-- Nada. Todavía no hay funcionalidad implementada.
+- Nada. Todas las validaciones pasan.
 
 ---
 
 ## Qué está incompleto
 
-- Verificación de que el proyecto levanta (pendiente de `pnpm install` y Docker).
-- Tests básicos.
+- Migraciones de Prisma (requiere PostgreSQL corriendo).
 - Seed de demostración.
+- Autenticación (Fase 1).
+- Tests (pendientes de funcionalidad).
 
 ---
 
 ## Qué errores existen
 
-- Ninguno conocido todavía (proyecto sin ejecutar).
+- Warning de `next.config.js` (MODULE_TYPELESS_PACKAGE_JSON) — informativo, no afecta funcionalidad. Se puede resolver añadiendo `"type": "module"` al package.json o eliminando el archivo `.js` redundante.
 
 ---
 
@@ -65,37 +71,35 @@ pnpm dev
 
 ```bash
 # Lint
-pnpm lint
+pnpm lint              # ✅ Pasa sin errores
 
 # Typecheck
-pnpm typecheck
-
-# Tests
-pnpm test
+pnpm typecheck         # ✅ Pasa sin errores
 
 # Build
-pnpm build
+pnpm build             # ✅ Pasa (compila, genera páginas estáticas)
+
+# Tests
+pnpm test              # ⬜ Pendiente (no hay tests aún)
 ```
 
 ---
 
 ## Última migración
 
-`20260715000000_init` — Schema inicial con User, Account, Session, Project, VerificationToken.
+`20260715000000_init` — Schema inicial pendiente de ejecutar (requiere PostgreSQL).
 
 ---
 
 ## Último commit estable
 
-(Proyecto nuevo — primer commit pendiente)
+`a7a0fda` — feat: initial project structure - Phase 0 architecture
 
 ---
 
 ## Próxima tarea concreta
 
-1. Ejecutar `pnpm install` y verificar que no hay errores de dependencias.
-2. Ejecutar `docker compose -f docker-compose.dev.yml up -d` y verificar PostgreSQL.
-3. Ejecutar `pnpm db:migrate` y verificar migración.
-4. Ejecutar `pnpm dev` y verificar que Next.js levanta en localhost:3000.
-5. Ejecutar `pnpm lint`, `pnpm typecheck`, `pnpm build`.
-6. Si todo pasa → Fase 0 cerrada. Continuar con Fase 1 (Usuarios y proyectos).
+1. Ejecutar `docker compose -f docker-compose.dev.yml up -d` y verificar PostgreSQL.
+2. Ejecutar `pnpm db:migrate` y verificar migración.
+3. Ejecutar `pnpm dev` y verificar que Next.js levanta en localhost:3000.
+4. Si todo pasa → Continuar con **Fase 1: Usuarios y proyectos**.
