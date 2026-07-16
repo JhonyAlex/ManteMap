@@ -261,6 +261,7 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 - Packages compartidos (database, shared, validation, ui, config)
 - 4 ADRs documentados
 - Documentación completa
+- Desplegado en producción (https://mante.saharapro.team/)
 
 ### Funcionalidades parcialmente terminadas
 
@@ -276,15 +277,18 @@ Ver `ROADMAP.md` para el desglose completo por fases.
 
 ### Deuda técnica conocida
 
-- (ninguna aún)
+- Tablas creadas con `prisma db push` en vez de migraciones versionadas (se corregirá en fases siguientes).
 
 ### Últimas validaciones realizadas
 
-- (pendiente de primera ejecución)
+- ✅ Lint: pasa sin errores
+- ✅ Typecheck: 6/6 packages pasan
+- ✅ Build: compila correctamente (standalone)
+- ✅ Despliegue: landing page en producción
 
 ### Próximo paso recomendado
 
-Completar la configuración del monorepositorio, Docker, y verificar que la aplicación mínima levanta correctamente.
+Continuar con **Fase 1: Usuarios y proyectos** (autenticación, roles, CRUD proyectos, layout).
 
 ---
 
@@ -335,6 +339,7 @@ docker compose -f docker-compose.dev.yml up -d
 | Fecha | Agente | Trabajo realizado | Estado | Próximo paso |
 |-------|--------|-------------------|--------|--------------|
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
+| 2026-07-15 | Deploy | Despliegue en producción (Dokploy + Docker) | ✅ Live | https://mante.saharapro.team/ |
 
 ---
 

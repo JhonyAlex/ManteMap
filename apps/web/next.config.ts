@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   transpilePackages: ['@mantemap/database', '@mantemap/shared', '@mantemap/ui', '@mantemap/validation'],
   experimental: {

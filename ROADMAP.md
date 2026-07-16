@@ -22,13 +22,15 @@ Hoja de ruta de desarrollo por fases.
 | Aplicación mínima ejecutándose | ✅ Completado | Next.js compila y genera páginas |
 | Lint + Typecheck | ✅ Completado | Pasan sin errores |
 | Build de producción | ✅ Completado | `pnpm build` completa sin errores |
+| Despliegue en producción | ✅ Completado | https://mante.saharapro.team/ funcionando |
 
 **Criterio de cierre**:
 - ✅ El proyecto levanta correctamente
-- ✅ La base de datos responde (schema validado)
+- ✅ La base de datos responde (schema validado con `prisma db push`)
 - ✅ Lint y typecheck funcionan
 - ✅ Build de producción funciona
 - ✅ La documentación explica cómo continuar
+- ✅ **Desplegado en producción**
 
 **Dependencias**: Ninguna (es la fase inicial).
 
