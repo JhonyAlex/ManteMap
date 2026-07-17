@@ -20,14 +20,8 @@ RUN pnpm install --frozen-lockfile
 # --- Build ---
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
-COPY --from=deps /app/packages/validation/node_modules ./packages/validation/node_modules
-COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
 COPY . .
+COPY --from=deps /app ./
 
 # Generate Prisma client
 RUN cd packages/database && npx prisma generate
@@ -50,6 +44,8 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+# Prisma Client's native query engine is generated outside Next.js standalone tracing.
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/.prisma ./node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/.prisma
 
 # Storage directory
 RUN mkdir -p /app/storage && chown nextjs:nodejs /app/storage
