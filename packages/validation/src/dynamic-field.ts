@@ -214,7 +214,7 @@ export type ReorderFieldsInput = z.infer<typeof reorderFieldsSchema>;
  * are always .optional() regardless of the `required` flag.
  */
 export function createFieldValueSchema(
-  fields: { key: string; type: string; required: boolean; defaultValue?: unknown; options?: { label: string; value: string }[]; validation?: Record<string, unknown> }[]
+  fields: ReadonlyArray<{ key: string; type: string; required: boolean; defaultValue?: unknown; options?: ReadonlyArray<{ label: string; value: string }>; validation?: unknown }>
 ): z.ZodObject<Record<string, z.ZodTypeAny>> {
   const shape: Record<string, z.ZodTypeAny> = {};
 

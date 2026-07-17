@@ -36,18 +36,18 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: Form Components (PR 2)
 
-- [ ] 2.1 Create `apps/web/src/components/forms/form-field-wrapper.tsx` — shared label, required asterisk, help text, error display via shadcn FormField
-- [ ] 2.2 Create `apps/web/src/components/forms/field-registry.ts` — `Map<DynamicFieldType, Component>` for 18 types
-- [ ] 2.3 Implement text fields: `text-field.tsx` (Input), `long-text-field.tsx` (Textarea), `url-field.tsx` (type=url), `email-field.tsx` (type=email), `phone-field.tsx` (type=tel) — each wrapping FormFieldWrapper
-- [ ] 2.4 Implement numeric fields: `number-field.tsx` (Input type=number), `decimal-field.tsx` (step=0.01), `currency-field.tsx` (Input + unit suffix)
-- [ ] 2.5 Implement `boolean-field.tsx` — Switch or Checkbox with controlled state
-- [ ] 2.6 Implement date fields: `date-field.tsx` (react-day-picker DayPicker), `datetime-field.tsx` (DayPicker + time input) — ISO string I/O
-- [ ] 2.7 Implement `select-field.tsx` — shadcn Select populated from `field.options`, empty options show placeholder
-- [ ] 2.8 Implement `multi-select-field.tsx` — checkbox group from `field.options`, Zod `z.array(z.string())`
-- [ ] 2.9 Implement `deferred-field.tsx` — disabled placeholder "Coming soon" for FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, USER_RELATION
-- [ ] 2.10 Create `apps/web/src/components/forms/dynamic-form.tsx` — Client Component: `useForm({ resolver: zodResolver(schema), defaultValues })`, iterates fields via registry, renders each, `onSubmit(values)` on valid submit
-- [ ] 2.11 RED: Write component tests — registry completeness, per-type render, required/optional indicators, help text, deferred placeholder
-- [ ] 2.12 GREEN: Implement all components, run `pnpm test -- apps/web/src/components/forms` until pass
+- [x] 2.1 Create `apps/web/src/components/forms/form-field-wrapper.tsx` — shared label, required asterisk, help text, error display via shadcn FormField
+- [x] 2.2 Create `apps/web/src/components/forms/field-registry.ts` — `Map<DynamicFieldType, Component>` for 18 types
+- [x] 2.3 Implement text fields: `text-field.tsx` (Input), `long-text-field.tsx` (Textarea), `url-field.tsx` (type=url), `email-field.tsx` (type=email), `phone-field.tsx` (type=tel) — each wrapping FormFieldWrapper
+- [x] 2.4 Implement numeric fields: `number-field.tsx` (Input type=number), `decimal-field.tsx` (step=0.01), `currency-field.tsx` (Input + unit suffix)
+- [x] 2.5 Implement `boolean-field.tsx` — Switch or Checkbox with controlled state
+- [x] 2.6 Implement date fields: `date-field.tsx` (native `type="date"`), `datetime-field.tsx` (native `type="datetime-local"`) — ISO string I/O
+- [x] 2.7 Implement `select-field.tsx` — shadcn Select populated from `field.options`, empty options show placeholder
+- [x] 2.8 Implement `multi-select-field.tsx` — checkbox group from `field.options`, Zod `z.array(z.string())`
+- [x] 2.9 Implement `deferred-field.tsx` — disabled placeholder "Coming soon" for FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, USER_RELATION
+- [x] 2.10 Create `apps/web/src/components/forms/dynamic-form.tsx` — Client Component: `useForm({ resolver: zodResolver(schema), defaultValues })`, iterates fields via registry, renders each, `onSubmit(values)` on valid submit
+- [x] 2.11 RED: Write component tests — registry completeness, per-type render, required/optional indicators, help text, deferred placeholder
+- [x] 2.12 GREEN: Implement all components, run `pnpm test -- apps/web/src/components/forms` until pass
 
 ## Phase 3: Integration & Docs (PR 3)
 
