@@ -1,8 +1,8 @@
 // ===========================================
 // ManteMap — Prisma Schema
 // ===========================================
-// Fase 0: Schema base con autenticación y proyectos.
-// Las fases siguientes añadirán los modelos del dominio.
+// Phase 2 Slice 1 adds project-scoped item types.
+// Production schema changes require the documented baseline procedure first.
 
 generator client {
   provider = "prisma-client-js"
@@ -108,6 +108,7 @@ model Project {
 
   owner   User             @relation(fields: [ownerId], references: [id])
   members ProjectMember[]
+  itemTypes ItemType[]
 
   @@index([ownerId])
   @@index([status])
@@ -132,6 +133,31 @@ model ProjectMember {
 
   @@unique([userId, projectId])
   @@map("project_members")
+}
+
+model ItemType {
+  id          String         @id @default(cuid())
+  projectId   String
+  name        String
+  slug        String
+  description String?
+  icon        String?
+  color       String?
+  status      ItemTypeStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, slug])
+  @@index([projectId, status])
+  @@index([projectId, name])
+  @@map("item_types")
+}
+
+enum ItemTypeStatus {
+  ACTIVE
+  ARCHIVED
 }
 
 enum ProjectRole {

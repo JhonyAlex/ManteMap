@@ -36,37 +36,37 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 1 — Usuarios y proyectos
+## Fase 1 — Usuarios y proyectos ✅
 
 **Objetivo**: Autenticación, gestión de usuarios y proyectos.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Autenticación (login/logout) | ⬜ Pendiente | Sesión se crea y destruye correctamente |
-| Registro de usuarios | ⬜ Pendiente | Nuevo usuario puede crear cuenta |
-| Roles básicos | ⬜ Pendiente | Admin, Gestor, Técnico, Consulta |
-| CRUD de proyectos | ⬜ Pendiente | Crear, leer, actualizar, archivar proyectos |
-| Acceso por proyecto | ⬜ Pendiente | Usuario solo ve proyectos asignados |
-| Layout principal | ⬜ Pendiente | Sidebar, breadcrumbs, contenido responsive |
-| Permisos en servidor | ⬜ Pendiente | API valida permisos antes de ejecutar |
+| Autenticación (login/logout) | ✅ Completado | Sesión se crea y destruye correctamente |
+| Registro de usuarios | ✅ Completado | Nuevo usuario puede crear cuenta |
+| Roles básicos | ✅ Completado | Admin, Gestor, Técnico, Consulta |
+| CRUD de proyectos | ✅ Completado | Crear, leer, actualizar, archivar proyectos |
+| Acceso por proyecto | ✅ Completado | Usuario solo ve proyectos asignados |
+| Layout principal | ✅ Completado | Sidebar, breadcrumbs, contenido responsive |
+| Permisos en servidor | ✅ Completado | API valida permisos antes de ejecutar |
 
 **Dependencias**: Fase 0 completada.
 
 ---
 
-## Fase 2 — Tipos, campos y estados
+## Fase 2 — Tipos, campos y estados 🔄 Activa
 
 **Objetivo**: Sistema configurable de tipos de ítems con campos dinámicos.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Tipos de ítem CRUD | ⬜ Pendiente | Crear/editar tipos por proyecto |
+| Tipos de ítem CRUD | 🔄 Slice 1 actual | Crear, leer, actualizar y archivar tipos por proyecto |
 | Definición de campos dinámicos | ⬜ Pendiente | 18 tipos de campo soportados |
 | Estados configurables | ⬜ Pendiente | Estados por tipo con colores e iconos |
 | Formularios generados | ⬜ Pendiente | Formulario se genera desde definición |
 | Validación de campos | ⬜ Pendiente | Zod valida según definición del campo |
 
-**Dependencias**: Fase 1 completada.
+**Dependencias**: Fase 1 completada. Dynamic fields and configurable statuses are deferred after Slice 1.
 
 ---
 
@@ -199,4 +199,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-15
+> **Última actualización**: 2026-07-17. Phase 2 Slice 1 is active; production Prisma baseline remains an operational prerequisite.

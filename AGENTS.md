@@ -249,7 +249,7 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 
 ### Fase actual
 
-**Fase 0 — Descubrimiento y arquitectura** ✅ Completada
+**Fase 2 — Tipos, campos y estados** 🔄 Activa. Fase 0 y Fase 1 están completadas.
 
 ### Funciones terminadas
 
@@ -262,10 +262,12 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 - 4 ADRs documentados
 - Documentación completa
 - Desplegado en producción (https://mante.saharapro.team/)
+- Fase 1 completa: autenticación, proyectos, acceso por proyecto y shell protegido.
+- Fase 2 Slice 1 activo: Item Type CRUD por proyecto, con pruebas enfocadas.
 
 ### Funcionalidades parcialmente terminadas
 
-- (ninguna aún)
+- Item Type CRUD is implemented in the worktree, but production schema rollout is blocked on the ADR-005 inspection/backup/baseline prerequisite.
 
 ### Funcionalidades pendientes
 
@@ -277,18 +279,19 @@ Ver `ROADMAP.md` para el desglose completo por fases.
 
 ### Deuda técnica conocida
 
-- Tablas creadas con `prisma db push` en vez de migraciones versionadas (se corregirá en fases siguientes).
+- Tablas creadas con `prisma db push` en vez de migraciones versionadas. Production schema inspection, backup, and baseline are mandatory before applying the ItemType migration; do not fabricate a baseline migration.
+- Windows standalone build verification may fail during symlink creation with `EPERM` after compilation and static generation.
 
 ### Últimas validaciones realizadas
 
-- ✅ Lint: pasa sin errores
-- ✅ Typecheck: 6/6 packages pasan
-- ✅ Build: compila correctamente (standalone)
+- ✅ Last known Phase 1 lint/typecheck evidence passed.
+- ✅ Last known Phase 1 full suite evidence passed (302/302).
+- ⚠️ Fresh Phase 2 verification must be run; Windows build has known standalone symlink `EPERM` evidence.
 - ✅ Despliegue: landing page en producción
 
 ### Próximo paso recomendado
 
-Continuar con **Fase 1: Usuarios y proyectos** (autenticación, roles, CRUD proyectos, layout).
+Continuar con **Fase 2 Slice 1** verification and the operational Prisma baseline prerequisite. Dynamic fields and configurable statuses remain deferred.
 
 ---
 
@@ -338,10 +341,11 @@ docker compose -f docker-compose.dev.yml up -d
 
 | Fecha | Agente | Trabajo realizado | Estado | Próximo paso |
 |-------|--------|-------------------|--------|--------------|
+| 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | 🔄 Activo | Baseline operativo y siguiente slice de campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
 | 2026-07-15 | Deploy | Despliegue en producción (Dokploy + Docker) | ✅ Live | https://mante.saharapro.team/ |
 
 ---
 
-> **Última actualización**: 2026-07-15
-> **Responsable**: Arquitecto IA (Fase 0)
+> **Última actualización**: 2026-07-17
+> **Responsable**: OpenCode (Phase 2 Slice 1)

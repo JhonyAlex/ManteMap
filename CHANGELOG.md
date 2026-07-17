@@ -4,6 +4,24 @@ Registro de cambios funcionales relevantes.
 
 ---
 
+## [Unreleased] — 2026-07-17
+
+### Added
+
+- Phase 2 Slice 1 Item Type model, shared validation, repository/service layers, and project-scoped API routes.
+- Owner-only mutations, member-only reads, duplicate-slug conflicts, safe error envelopes, and non-destructive archive behavior.
+- Focused service and route tests for authentication, membership, owner policy, ADMIN behavior, scoping, validation, and archive semantics.
+- ADR-005 and OpenSpec artifacts documenting the production Prisma baseline prerequisite.
+
+### Deferred
+
+- Dynamic fields and configurable statuses remain future Phase 2 slices.
+
+### Verification Notes
+
+- No database-mutating Prisma command was run.
+- Windows standalone build verification has a known symlink creation `EPERM` limitation; see `docs/progress/CURRENT_STATUS.md`.
+
 ## [0.1.0] — 2026-07-15
 
 ### Added
