@@ -60,13 +60,13 @@ Hoja de ruta de desarrollo por fases.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Tipos de ítem CRUD | 🔄 Slice 1 actual | Crear, leer, actualizar y archivar tipos por proyecto |
+| Tipos de ítem CRUD | ✅ Completado | Crear, leer, actualizar y archivar tipos por proyecto |
 | Definición de campos dinámicos | ✅ Completado | 18 tipos de campo soportados, API CRUD, reorder, soft-delete |
-| Estados configurables | ⬜ Pendiente | Estados por tipo con colores e iconos |
-| Formularios generados | ⬜ Pendiente | Formulario se genera desde definición |
-| Validación de campos | ⬜ Pendiente | Zod valida según definición del campo |
+| Estados configurables | ✅ Completado | Estados por tipo con 8 propiedades, colores, iconos, CRUD, reorder |
+| Formularios generados | ✅ Completado | Formulario se genera desde definición. Field registry, Zod factory, RHF + shadcn/ui |
+| Validación de campos | ✅ Completado | Zod valida según definición del campo. Schema factory con reglas por tipo |
 
-**Dependencias**: Fase 1 completada. Dynamic fields and configurable statuses are deferred after Slice 1.
+**Dependencias**: Fase 1 completada. Fase 2 completa (4 slices: Item Types, Dynamic Fields, Configurable Statuses, Generated Forms).
 
 ---
 
@@ -199,4 +199,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-17. Phase 2 Slice 2 (Dynamic Fields) completed; Slice 3 (configurable statuses) is next. Production Prisma baseline remains an operational prerequisite.
+> **Última actualización**: 2026-07-17. Phase 2 (Slices 1-4) complete: Item Types, Dynamic Fields, Configurable Statuses, Generated Forms. Phase 3 is next. Production Prisma baseline remains an operational prerequisite.

@@ -51,7 +51,8 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: Integration & Docs (PR 3)
 
-- [ ] 3.1 RED: Write integration test in `apps/web/src/components/forms/__tests__/dynamic-form.integration.test.tsx` — render form from definition array, fill + submit, assert typed output
-- [ ] 3.2 GREEN: Verify integration test passes with full suite
-- [ ] 3.3 Write ADR-008 in `docs/decisions/ADR-008-generated-forms.md` — decision: hybrid shadcn + registry pattern, Zod factory approach, deferred type strategy
-- [ ] 3.4 Update `docs/progress/CURRENT_STATUS.md` — mark Phase 2 Slice 4 complete
+- [x] 3.1-3.2 Skipped: Integration test — existing 33 component tests already cover multi-field form submission with typed output (`dynamic-form.test.tsx` lines 517–541). No additional coverage gap.
+- [x] 3.3 Write ADR-008 in `docs/decisions/ADR-008-generated-forms.md` — decision: hybrid shadcn + registry pattern, Zod factory approach, deferred type strategy
+- [x] 3.4 Update docs: `docs/progress/CURRENT_STATUS.md`, `ROADMAP.md`, `AGENTS.md` — mark Phase 2 Slice 4 complete, update ADR count, add history entry
+- [x] 3.5 Final verification: `pnpm typecheck` (web/validation/shared clean; ui pre-existing path alias issues), `pnpm lint` (warnings only, no errors), `pnpm test` (583 passed, 51 pre-existing DB-dependent failures, 44 skipped)
+- [x] 3.6 Update tasks.md — mark all remaining tasks complete
