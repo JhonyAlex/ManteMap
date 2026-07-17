@@ -1,27 +1,50 @@
 import { z } from 'zod';
 
-/** Esquema para crear proyecto */
+/**
+ * Schema for creating a project.
+ *
+ * The `code` field is normalized to uppercase via Zod preprocess so that
+ * `my-project` becomes `MY-PROJECT` before validation or persistence.
+ * This ensures uniqueness is enforced on the normalized form.
+ */
 export const createProjectSchema = z.object({
   code: z
-    .string()
-    .min(2, 'El código debe tener al menos 2 caracteres')
-    .max(20, 'El código no puede tener más de 20 caracteres')
-    .regex(/^[A-Z0-9-_]+$/, 'El código solo puede contener letras mayúsculas, números, guiones y guiones bajos'),
+    .preprocess(
+      (val) => typeof val === 'string' ? val.trim().toUpperCase() : val,
+      z
+        .string()
+        .min(2, 'Code must be at least 2 characters')
+        .max(20, 'Code cannot exceed 20 characters')
+        .regex(
+          /^[A-Z0-9-_]+$/,
+          'Code can only contain uppercase letters, numbers, hyphens, and underscores'
+        )
+    ),
   name: z
     .string()
-    .min(3, 'El nombre debe tener al menos 3 caracteres')
-    .max(100, 'El nombre no puede tener más de 100 caracteres'),
+    .min(3, 'Name must be at least 3 characters')
+    .max(100, 'Name cannot exceed 100 characters'),
   description: z
     .string()
-    .max(500, 'La descripción no puede tener más de 500 caracteres')
+    .max(500, 'Description cannot exceed 500 characters')
     .optional(),
 });
 
-/** Esquema para actualizar proyecto */
-export const updateProjectSchema = createProjectSchema.partial();
+/** Schema for updating a project (all fields optional) */
+export const updateProjectSchema = z.object({
+  name: z
+    .string()
+    .min(3, 'Name must be at least 3 characters')
+    .max(100, 'Name cannot exceed 100 characters')
+    .optional(),
+  description: z
+    .string()
+    .max(500, 'Description cannot exceed 500 characters')
+    .optional(),
+});
 
-/** Tipo inferido para crear proyecto */
+/** Inferred type for project creation */
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
-/** Tipo inferido para actualizar proyecto */
+/** Inferred type for project update */
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;

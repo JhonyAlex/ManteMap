@@ -31,6 +31,9 @@ coverage/
 # Turbo
 .turbo/
 
+# CodeGraph local index
+.codegraph/
+
 # Prisma
 packages/database/prisma/migrations/**/migration_lock.toml
 

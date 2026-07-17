@@ -1,0 +1,43 @@
+schema: spec-driven
+
+context: |
+  Project: ManteMap document, asset, expiry, maintenance, and interactive-plan platform.
+  Stack: Next.js 15 App Router, React 19, TypeScript 5.6, pnpm workspaces, Turborepo.
+  Data: PostgreSQL 16 with Prisma 6; shared packages provide UI, validation, and domain types.
+  Style: Server Components by default; service/repository separation; strict TypeScript; English SDD artifacts.
+  Current phase: Phase 0 complete; Phase 1 covers authentication, users, roles, projects, permissions, and layout.
+
+strict_tdd: true
+
+testing:
+  runner: vitest
+  unit: "pnpm test"
+  integration: "Vitest available; no dedicated integration harness detected"
+  e2e: "Unavailable: Playwright script exists but dependency/configuration was not detected"
+  coverage: "Unavailable: no coverage runner/configuration detected"
+  lint: "pnpm lint"
+  typecheck: "pnpm typecheck"
+  format: "pnpm format:check"
+
+rules:
+  proposal:
+    - Include rollback plans for risky changes.
+    - Keep scope aligned with the active roadmap phase.
+  specs:
+    - Use Given/When/Then scenarios and RFC 2119 keywords.
+    - Preserve existing behavior unless the change explicitly modifies it.
+  design:
+    - Follow the documented service/repository architecture.
+    - Record architecture decisions and rationale.
+  tasks:
+    - Group tasks by phase and keep them independently verifiable.
+    - Respect the 800 changed-line review budget and auto-forecast delivery strategy.
+  apply:
+    tdd: true
+    test_command: "pnpm test"
+  verify:
+    test_command: "pnpm test"
+    build_command: "pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.
