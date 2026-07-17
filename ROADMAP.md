@@ -61,7 +61,7 @@ Hoja de ruta de desarrollo por fases.
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
 | Tipos de ítem CRUD | 🔄 Slice 1 actual | Crear, leer, actualizar y archivar tipos por proyecto |
-| Definición de campos dinámicos | ⬜ Pendiente | 18 tipos de campo soportados |
+| Definición de campos dinámicos | ✅ Completado | 18 tipos de campo soportados, API CRUD, reorder, soft-delete |
 | Estados configurables | ⬜ Pendiente | Estados por tipo con colores e iconos |
 | Formularios generados | ⬜ Pendiente | Formulario se genera desde definición |
 | Validación de campos | ⬜ Pendiente | Zod valida según definición del campo |
@@ -199,4 +199,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-17. Phase 2 Slice 1 is active; production Prisma baseline remains an operational prerequisite.
+> **Última actualización**: 2026-07-17. Phase 2 Slice 2 (Dynamic Fields) completed; Slice 3 (configurable statuses) is next. Production Prisma baseline remains an operational prerequisite.

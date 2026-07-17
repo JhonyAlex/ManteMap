@@ -8,7 +8,7 @@
 
 **Fase 2 — Tipos, campos y estados** 🔄 Activa
 
-Fase 0 y Fase 1 están completadas. El slice actual es **Item Type CRUD**: modelo Prisma, validación, repository/service, rutas protegidas y pruebas enfocadas.
+Fase 0 y Fase 1 están completadas. **Slice 2 (Dynamic Fields) completado.** El modelo `DynamicField` con 18 tipos de campo, validación Zod, repository/service, API routes anidadas y pruebas enfocadas están implementados. El Slice 3 (estados configurables) es el próximo paso.
 
 ---
 
@@ -37,7 +37,9 @@ Fase 0 y Fase 1 están completadas. El slice actual es **Item Type CRUD**: model
 - ✅ Aplicación Next.js 15 con App Router configurada en `apps/web`.
 - ✅ Schema Prisma base definido (User, Account, Session, Project, ProjectMember).
 - ✅ Phase 1 authentication, projects, access control, and protected shell.
-- ✅ Phase 2 Slice 1 Item Type validation, repository/service, API routes, and focused tests are implemented in the worktree.
+- ✅ Phase 2 Slice 1: Item Type CRUD por proyecto, con pruebas enfocadas.
+- ✅ Phase 2 Slice 2: DynamicField model (18 types), Zod validation, repository, service, API routes anidadas, reorder endpoint, soft-delete, include en ItemType GET, ADR-006 documentado.
+- ✅ 5 ADRs documentados (ADR-001 a ADR-005).
 - ✅ Docker Compose para PostgreSQL 16 con healthcheck.
 - ✅ Configuración TypeScript, ESLint, Prettier funcionando.
 - ✅ Packages compartidos: database, shared, validation, ui, config.
@@ -52,7 +54,7 @@ Fase 0 y Fase 1 están completadas. El slice actual es **Item Type CRUD**: model
 
 - Operational adoption of the prepared versioned Prisma migrations (the repository now contains the baseline and ItemType migration; see ADR-005).
 - Seed de demostración.
-- Dynamic fields and configurable statuses (deferred Phase 2 slices).
+- Configurable statuses and generated forms (deferred Phase 2 slices 3 and 4).
 
 ## Qué errores existen
 
@@ -83,10 +85,10 @@ pnpm dev
 ## Qué comando ejecutar para validar
 
 ```bash
-pnpm lint              # Pending fresh Phase 2 verification
-pnpm typecheck         # Pending fresh Phase 2 verification
+pnpm lint              # ✅ Pass (Phase 2 Slice 2 verified)
+pnpm typecheck         # ✅ Pass (Phase 2 Slice 2 verified)
 pnpm build             # Known Windows standalone symlink EPERM risk
-pnpm test              # Focused Phase 2 tests plus existing suite
+pnpm test              # ✅ 215/215 passing (Phase 2 Slice 2 verified)
 ```
 
 ---
@@ -101,9 +103,4 @@ Prepared, not applied: `20260717000000_baseline_production_schema` and `20260717
 
 ## Próxima tarea concreta
 
-Continuar con **Fase 2 Slice 1** verification and the operational Prisma baseline prerequisite:
-
-1. Verify a restorable production backup and `_prisma_migrations` history.
-2. Mark the verified baseline migration as applied without executing its create-DDL.
-3. Apply the reviewed Item Type migration in an approved window.
-4. Plan the next bounded slice for dynamic fields; configurable statuses remain separate.
+Continuar con **Fase 2 Slice 3**: estados configurables por tipo de ítem con colores e iconos, o **Fase 2 Slice 4**: formularios generados desde definiciones de campos. El baseline operativo de Prisma (ADR-005) sigue siendo un prerrequisito para el despliegue del schema en producción.

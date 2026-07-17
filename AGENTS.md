@@ -259,15 +259,16 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 - Docker Compose para PostgreSQL 16
 - Configuración TypeScript, ESLint, Prettier
 - Packages compartidos (database, shared, validation, ui, config)
-- 4 ADRs documentados
+- 6 ADRs documentados (ADR-001 a ADR-006)
 - Documentación completa
 - Desplegado en producción (https://mante.saharapro.team/)
 - Fase 1 completa: autenticación, proyectos, acceso por proyecto y shell protegido.
-- Fase 2 Slice 1 activo: Item Type CRUD por proyecto, con pruebas enfocadas.
+- Fase 2 Slice 1: Item Type CRUD por proyecto, con pruebas enfocadas.
+- Fase 2 Slice 2: DynamicField CRUD con 18 tipos, Zod, API routes, ADR-006.
 
 ### Funcionalidades parcialmente terminadas
 
-- Item Type CRUD is implemented in the worktree, but production schema rollout is blocked on the ADR-005 inspection/backup/baseline prerequisite.
+- ItemType y DynamicField CRUD están implementados en el worktree, pero el rollout del schema en producción está bloqueado por el prerrequisito de inspección/backup/baseline del ADR-005.
 
 ### Funcionalidades pendientes
 
@@ -284,14 +285,14 @@ Ver `ROADMAP.md` para el desglose completo por fases.
 
 ### Últimas validaciones realizadas
 
-- ✅ Last known Phase 1 lint/typecheck evidence passed.
-- ✅ Last known Phase 1 full suite evidence passed (302/302).
-- ⚠️ Fresh Phase 2 verification must be run; Windows build has known standalone symlink `EPERM` evidence.
+- ✅ Phase 2 Slice 2 lint/typecheck passed.
+- ✅ Phase 2 Slice 2 full test suite passed (215/215).
+- ⚠️ Windows build has known standalone symlink `EPERM` evidence.
 - ✅ Despliegue: landing page en producción
 
 ### Próximo paso recomendado
 
-Continuar con **Fase 2 Slice 1** verification and the operational Prisma baseline prerequisite. Dynamic fields and configurable statuses remain deferred.
+Continuar con **Fase 2 Slice 3**: estados configurables por tipo de ítem con colores e iconos. El baseline operativo de Prisma (ADR-005) sigue siendo un prerrequisito para el despliegue del schema en producción.
 
 ---
 
@@ -341,11 +342,12 @@ docker compose -f docker-compose.dev.yml up -d
 
 | Fecha | Agente | Trabajo realizado | Estado | Próximo paso |
 |-------|--------|-------------------|--------|--------------|
-| 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | 🔄 Activo | Baseline operativo y siguiente slice de campos dinámicos |
+| 2026-07-17 | OpenCode | Fase 2 Slice 2: DynamicField CRUD (18 tipos), Zod, API routes, reorder, ADR-006 | ✅ Completado | Slice 3: estados configurables |
+| 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | ✅ Completado | Slice 2: campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
 | 2026-07-15 | Deploy | Despliegue en producción (Dokploy + Docker) | ✅ Live | https://mante.saharapro.team/ |
 
 ---
 
 > **Última actualización**: 2026-07-17
-> **Responsable**: OpenCode (Phase 2 Slice 1)
+> **Responsable**: OpenCode (Phase 2 Slice 2)
