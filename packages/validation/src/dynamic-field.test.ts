@@ -4,7 +4,35 @@ import {
   updateDynamicFieldSchema,
   reorderFieldsSchema,
   dynamicFieldTypeEnum,
+  createFieldValueSchema,
 } from './dynamic-field';
+
+// Minimal field-definition type matching DynamicFieldDefinition from shared types.
+// Used only in tests — avoids a cross-package type import that the validation
+// package's tsconfig does not resolve.
+interface TestFieldDef {
+  id: string;
+  key: string;
+  type: string;
+  required: boolean;
+  defaultValue?: unknown;
+  order: number;
+  visible: boolean;
+  active: boolean;
+  showInList: boolean;
+  showInSearch: boolean;
+  options?: { label: string; value: string; color?: string }[];
+  validation?: {
+    min?: number;
+    max?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    minDate?: string;
+    maxDate?: string;
+    customMessage?: string;
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Enum completeness — must match shared DynamicFieldType union
@@ -594,5 +622,478 @@ describe('reorderFieldsSchema', () => {
   it('rejects when fieldIds is not an array', () => {
     const result = reorderFieldsSchema.safeParse({ fieldIds: 'not-an-array' });
     expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createFieldValueSchema
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal field def builder for tests — only the fields needed by the factory.
+ */
+function fieldDef(
+  overrides: Partial<TestFieldDef> & { key: string; type: string }
+): TestFieldDef {
+  const { key, type, ...rest } = overrides;
+  return {
+    id: `id-${key}`,
+    key,
+    type,
+    required: false,
+    order: 0,
+    visible: true,
+    active: true,
+    showInList: false,
+    showInSearch: false,
+    ...rest,
+  } as TestFieldDef;
+}
+
+describe('createFieldValueSchema', () => {
+  // --- Basic shape ---
+  it('returns a ZodObject with the correct shape keys', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'name', type: 'SHORT_TEXT', required: true }),
+      fieldDef({ key: 'age', type: 'NUMBER' }),
+    ]);
+    const result = schema.safeParse({ name: 'Alice', age: 30 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Alice');
+      expect(result.data.age).toBe(30);
+    }
+  });
+
+  // --- Required field enforcement ---
+  it('rejects a required SHORT_TEXT field when missing', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'title', type: 'SHORT_TEXT', required: true }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a required SHORT_TEXT field when empty string', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'title', type: 'SHORT_TEXT', required: true }),
+    ]);
+    const result = schema.safeParse({ title: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a required NUMBER field when missing', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'quantity', type: 'NUMBER', required: true }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  // --- Optional fields ---
+  it('accepts an optional field when undefined', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'notes', type: 'LONG_TEXT', required: false }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.notes).toBeUndefined();
+    }
+  });
+
+  // --- Default value ---
+  it('applies default value when field is not provided', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'status', type: 'SHORT_TEXT', required: false, defaultValue: 'draft' }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe('draft');
+    }
+  });
+
+  it('overrides default value when explicitly provided', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'status', type: 'SHORT_TEXT', required: false, defaultValue: 'draft' }),
+    ]);
+    const result = schema.safeParse({ status: 'published' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBe('published');
+    }
+  });
+
+  // --- NUMBER min/max ---
+  it('rejects NUMBER below min', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'score', type: 'NUMBER', validation: { min: 0, max: 100 } }),
+    ]);
+    const result = schema.safeParse({ score: -5 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects NUMBER above max', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'score', type: 'NUMBER', validation: { min: 0, max: 100 } }),
+    ]);
+    const result = schema.safeParse({ score: 150 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts NUMBER in range', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'score', type: 'NUMBER', validation: { min: 0, max: 100 } }),
+    ]);
+    const result = schema.safeParse({ score: 50 });
+    expect(result.success).toBe(true);
+  });
+
+  // --- NUMBER string coercion ---
+  it('coerces string numbers to number for NUMBER type', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'count', type: 'NUMBER' }),
+    ]);
+    const result = schema.safeParse({ count: '42' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.count).toBe(42);
+    }
+  });
+
+  // --- DECIMAL ---
+  it('accepts DECIMAL with decimal value', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'weight', type: 'DECIMAL', validation: { min: 0, max: 1000 } }),
+    ]);
+    const result = schema.safeParse({ weight: 45.5 });
+    expect(result.success).toBe(true);
+  });
+
+  // --- CURRENCY ---
+  it('accepts CURRENCY with valid value', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'price', type: 'CURRENCY', validation: { min: 0 } }),
+    ]);
+    const result = schema.safeParse({ price: 99.99 });
+    expect(result.success).toBe(true);
+  });
+
+  // --- SHORT_TEXT minLength/maxLength ---
+  it('rejects SHORT_TEXT below minLength', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'code', type: 'SHORT_TEXT', validation: { minLength: 3, maxLength: 10 } }),
+    ]);
+    const result = schema.safeParse({ code: 'ab' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects SHORT_TEXT above maxLength', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'code', type: 'SHORT_TEXT', validation: { minLength: 3, maxLength: 10 } }),
+    ]);
+    const result = schema.safeParse({ code: 'abcdefghijklmno' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts SHORT_TEXT within length range', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'code', type: 'SHORT_TEXT', validation: { minLength: 3, maxLength: 10 } }),
+    ]);
+    const result = schema.safeParse({ code: 'abc123' });
+    expect(result.success).toBe(true);
+  });
+
+  // --- SHORT_TEXT pattern ---
+  it('rejects SHORT_TEXT that does not match pattern', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'partCode', type: 'SHORT_TEXT', validation: { pattern: '^[A-Z]{3}-\\d{4}$' } }),
+    ]);
+    const result = schema.safeParse({ partCode: 'abc1234' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts SHORT_TEXT that matches pattern', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'partCode', type: 'SHORT_TEXT', validation: { pattern: '^[A-Z]{3}-\\d{4}$' } }),
+    ]);
+    const result = schema.safeParse({ partCode: 'ABC-1234' });
+    expect(result.success).toBe(true);
+  });
+
+  // --- BOOLEAN ---
+  it('accepts BOOLEAN true', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'isActive', type: 'BOOLEAN' }),
+    ]);
+    const result = schema.safeParse({ isActive: true });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects non-boolean value for BOOLEAN type', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'isActive', type: 'BOOLEAN' }),
+    ]);
+    const result = schema.safeParse({ isActive: 'yes' });
+    expect(result.success).toBe(false);
+  });
+
+  // --- SELECT ---
+  it('rejects value not in SELECT options', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'category',
+        type: 'SELECT',
+        options: [
+          { label: 'Electronics', value: 'electronics' },
+          { label: 'Furniture', value: 'furniture' },
+        ],
+      }),
+    ]);
+    const result = schema.safeParse({ category: 'clothing' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts value in SELECT options', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'category',
+        type: 'SELECT',
+        options: [
+          { label: 'Electronics', value: 'electronics' },
+          { label: 'Furniture', value: 'furniture' },
+        ],
+      }),
+    ]);
+    const result = schema.safeParse({ category: 'electronics' });
+    expect(result.success).toBe(true);
+  });
+
+  // --- MULTI_SELECT ---
+  it('accepts MULTI_SELECT with valid option values', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'tags',
+        type: 'MULTI_SELECT',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+          { label: 'C', value: 'c' },
+        ],
+      }),
+    ]);
+    const result = schema.safeParse({ tags: ['a', 'c'] });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.tags).toEqual(['a', 'c']);
+    }
+  });
+
+  it('rejects MULTI_SELECT with invalid option value', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'tags',
+        type: 'MULTI_SELECT',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+      }),
+    ]);
+    const result = schema.safeParse({ tags: ['a', 'x'] });
+    expect(result.success).toBe(false);
+  });
+
+  // --- URL ---
+  it('accepts a valid URL', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'website', type: 'URL' }),
+    ]);
+    const result = schema.safeParse({ website: 'https://example.com' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid URL', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'website', type: 'URL' }),
+    ]);
+    const result = schema.safeParse({ website: 'not-a-url' });
+    expect(result.success).toBe(false);
+  });
+
+  // --- EMAIL ---
+  it('accepts a valid email', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'contactEmail', type: 'EMAIL' }),
+    ]);
+    const result = schema.safeParse({ contactEmail: 'test@example.com' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid email', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'contactEmail', type: 'EMAIL' }),
+    ]);
+    const result = schema.safeParse({ contactEmail: 'not-email' });
+    expect(result.success).toBe(false);
+  });
+
+  // --- DATE ---
+  it('accepts a valid date string (ISO)', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'installDate', type: 'DATE' }),
+    ]);
+    const result = schema.safeParse({ installDate: '2024-06-15' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid datetime string (ISO)', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'lastCheck', type: 'DATETIME' }),
+    ]);
+    const result = schema.safeParse({ lastCheck: '2024-06-15T10:30:00.000Z' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid date format', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'eventDate', type: 'DATE' }),
+    ]);
+    const result = schema.safeParse({ eventDate: 'next Tuesday' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects DATE below minDate', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'startDate',
+        type: 'DATE',
+        validation: { minDate: '2024-01-01', maxDate: '2024-12-31' },
+      }),
+    ]);
+    const result = schema.safeParse({ startDate: '2023-06-15' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects DATE above maxDate', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'startDate',
+        type: 'DATE',
+        validation: { minDate: '2024-01-01', maxDate: '2024-12-31' },
+      }),
+    ]);
+    const result = schema.safeParse({ startDate: '2025-06-15' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts DATE within minDate/maxDate range', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({
+        key: 'startDate',
+        type: 'DATE',
+        validation: { minDate: '2024-01-01', maxDate: '2024-12-31' },
+      }),
+    ]);
+    const result = schema.safeParse({ startDate: '2024-06-15' });
+    expect(result.success).toBe(true);
+  });
+
+  // --- PHONE ---
+  it('accepts a phone string', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'phone', type: 'PHONE' }),
+    ]);
+    const result = schema.safeParse({ phone: '+54 11 5555-1234' });
+    expect(result.success).toBe(true);
+  });
+
+  // --- Multiple fields combined ---
+  it('validates multiple fields together and returns typed data', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'name', type: 'SHORT_TEXT', required: true }),
+      fieldDef({ key: 'quantity', type: 'NUMBER', required: true }),
+      fieldDef({ key: 'active', type: 'BOOLEAN' }),
+    ]);
+    const result = schema.safeParse({ name: 'Widget', quantity: 5, active: true });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Widget');
+      expect(result.data.quantity).toBe(5);
+      expect(result.data.active).toBe(true);
+    }
+  });
+
+  it('rejects multiple fields when one is invalid', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'name', type: 'SHORT_TEXT', required: true }),
+      fieldDef({ key: 'email', type: 'EMAIL', required: true }),
+    ]);
+    const result = schema.safeParse({ name: 'Alice', email: 'not-email' });
+    expect(result.success).toBe(false);
+  });
+
+  // --- Deferred types ---
+  it('makes FILE type optional regardless of required flag', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'attachment', type: 'FILE', required: true }),
+      fieldDef({ key: 'name', type: 'SHORT_TEXT', required: true }),
+    ]);
+    const result = schema.safeParse({ name: 'Doc' });
+    expect(result.success).toBe(true);
+  });
+
+  it('makes IMAGE type optional', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'photo', type: 'IMAGE' }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('makes ITEM_RELATION type optional string', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'parentItem', type: 'ITEM_RELATION' }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('makes LOCATION_RELATION type optional string', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'location', type: 'LOCATION_RELATION' }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('makes USER_RELATION type optional string', () => {
+    const schema = createFieldValueSchema([
+      fieldDef({ key: 'assignedTo', type: 'USER_RELATION' }),
+    ]);
+    const result = schema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  // --- All 18 types produce valid schemas ---
+  const all18Types: string[] = [
+    'SHORT_TEXT', 'LONG_TEXT', 'NUMBER', 'DECIMAL', 'CURRENCY',
+    'BOOLEAN', 'DATE', 'DATETIME', 'SELECT', 'MULTI_SELECT',
+    'URL', 'EMAIL', 'PHONE', 'FILE', 'IMAGE',
+    'ITEM_RELATION', 'LOCATION_RELATION', 'USER_RELATION',
+  ];
+
+  it('builds schema for all 18 field types without throwing', () => {
+    const fields = all18Types.map((type, i) => {
+      const f = fieldDef({ key: `field-${i}`, type });
+      if (type === 'SELECT' || type === 'MULTI_SELECT') {
+        f.options = [{ label: 'Option', value: 'opt' }];
+      }
+      return f;
+    });
+    const schema = createFieldValueSchema(fields);
+    expect(schema).toBeDefined();
+    expect(schema._def.typeName).toBe('ZodObject');
   });
 });

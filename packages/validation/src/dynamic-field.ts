@@ -200,3 +200,166 @@ export const reorderFieldsSchema = z.object({
 });
 
 export type ReorderFieldsInput = z.infer<typeof reorderFieldsSchema>;
+
+// ---------------------------------------------------------------------------
+// createFieldValueSchema — builds a Zod schema from DynamicFieldDefinition[]
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps a DynamicFieldDefinition[] to a z.ZodObject for form validation.
+ * Each field's type determines the base Zod type; per-type validation rules
+ * (min/max, minLength/maxLength, pattern, minDate/maxDate) are applied.
+ *
+ * Deferred types (FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, USER_RELATION)
+ * are always .optional() regardless of the `required` flag.
+ */
+export function createFieldValueSchema(
+  fields: { key: string; type: string; required: boolean; defaultValue?: unknown; options?: { label: string; value: string }[]; validation?: Record<string, unknown> }[]
+): z.ZodObject<Record<string, z.ZodTypeAny>> {
+  const shape: Record<string, z.ZodTypeAny> = {};
+
+  /** Deferred types — always optional, placeholder schema */
+  const deferredTypes = new Set(['FILE', 'IMAGE', 'ITEM_RELATION', 'LOCATION_RELATION', 'USER_RELATION']);
+
+  for (const field of fields) {
+    let schema: z.ZodTypeAny;
+
+    // --- Build base schema from field type ---
+    switch (field.type) {
+      // --- Numeric types ---
+      case 'NUMBER':
+      case 'DECIMAL':
+      case 'CURRENCY': {
+        let numSchema = z.coerce.number();
+        const v = field.validation as { min?: number; max?: number } | undefined;
+        if (v?.min !== undefined) {
+          numSchema = numSchema.min(v.min, `Must be ≥ ${v.min}`);
+        }
+        if (v?.max !== undefined) {
+          numSchema = numSchema.max(v.max, `Must be ≤ ${v.max}`);
+        }
+        schema = numSchema;
+        break;
+      }
+
+      // --- Text types ---
+      case 'SHORT_TEXT':
+      case 'LONG_TEXT': {
+        let strSchema = z.string();
+        const v = field.validation as { minLength?: number; maxLength?: number; pattern?: string } | undefined;
+        if (v?.minLength !== undefined) {
+          strSchema = strSchema.min(v.minLength, `Must be at least ${v.minLength} characters`);
+        }
+        if (v?.maxLength !== undefined) {
+          strSchema = strSchema.max(v.maxLength, `Must be at most ${v.maxLength} characters`);
+        }
+        if (v?.pattern !== undefined) {
+          strSchema = strSchema.regex(new RegExp(v.pattern), `Must match pattern: ${v.pattern}`);
+        }
+        schema = strSchema;
+        break;
+      }
+
+      // --- Boolean ---
+      case 'BOOLEAN':
+        schema = z.boolean({ required_error: 'This field is required', invalid_type_error: 'Must be true or false' });
+        break;
+
+      // --- Date types ---
+      case 'DATE':
+      case 'DATETIME': {
+        let dateSchema: z.ZodTypeAny = z.string().refine(
+          (val) => /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/.test(val),
+          { message: 'Must be a valid ISO date' }
+        );
+        const v = field.validation as { minDate?: string; maxDate?: string } | undefined;
+        if (v?.minDate !== undefined) {
+          dateSchema = dateSchema.refine(
+            (val: string) => val >= v.minDate!,
+            { message: `Date must be on or after ${v.minDate}` }
+          );
+        }
+        if (v?.maxDate !== undefined) {
+          dateSchema = dateSchema.refine(
+            (val: string) => val <= v.maxDate!,
+            { message: `Date must be on or before ${v.maxDate}` }
+          );
+        }
+        schema = dateSchema;
+        break;
+      }
+
+      // --- SELECT ---
+      case 'SELECT': {
+        const options = field.options ?? [];
+        if (options.length > 0) {
+          const values = options.map((o) => o.value) as [string, ...string[]];
+          schema = z.enum(values);
+        } else {
+          schema = z.string();
+        }
+        break;
+      }
+
+      // --- MULTI_SELECT ---
+      case 'MULTI_SELECT': {
+        const options = field.options ?? [];
+        if (options.length > 0) {
+          const validValues = new Set(options.map((o) => o.value));
+          schema = z.array(z.string()).refine(
+            (vals) => vals.every((v) => validValues.has(v)),
+            { message: 'One or more selected values are invalid' }
+          );
+        } else {
+          schema = z.array(z.string());
+        }
+        break;
+      }
+
+      // --- URL ---
+      case 'URL':
+        schema = z.string().url('Must be a valid URL');
+        break;
+
+      // --- EMAIL ---
+      case 'EMAIL':
+        schema = z.string().email('Must be a valid email');
+        break;
+
+      // --- PHONE (plain string — no strict validation) ---
+      case 'PHONE':
+        schema = z.string();
+        break;
+
+      // --- Deferred types ---
+      default:
+        // All unknown or deferred types become optional strings
+        schema = z.string().optional();
+        break;
+    }
+
+    // --- Apply required/optional/default ---
+    // Deferred types are ALWAYS optional regardless of required flag
+    if (deferredTypes.has(field.type)) {
+      schema = z.string().optional();
+      // Skip defaultValue for deferred — no meaningful default yet
+    } else if (field.required) {
+      // For required string fields, reject empty strings
+      if (schema instanceof z.ZodString) {
+        schema = schema.min(1, 'This field is required');
+      }
+      // number/boolean types are already required by Zod default
+    } else {
+      // Optional — make omitable and apply default if present
+      schema = schema.optional();
+      if (field.defaultValue !== undefined && field.defaultValue !== null) {
+        // Cast to any because .default() type is complex to narrow here
+        schema = (schema as z.ZodOptional<z.ZodTypeAny>).default(field.defaultValue);
+      }
+    }
+
+    shape[field.key] = schema;
+  }
+
+  return z.object(shape);
+}

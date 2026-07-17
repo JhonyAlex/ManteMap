@@ -3,11 +3,15 @@
 /** Estado del ítem */
 export interface ItemStatus {
   id: string;
+  itemTypeId: string;
   name: string;
-  code: string;
+  key: string;
   color: string;
   icon?: string;
-  isInitial: boolean;
+  description?: string;
+  order: number;
+  isDefault: boolean;
+  active: boolean;
   isFinal: boolean;
   isBlocking: boolean;
   isIncident: boolean;
@@ -68,6 +72,8 @@ export interface FieldValidation {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  minDate?: string;
+  maxDate?: string;
   customMessage?: string;
 }
 
