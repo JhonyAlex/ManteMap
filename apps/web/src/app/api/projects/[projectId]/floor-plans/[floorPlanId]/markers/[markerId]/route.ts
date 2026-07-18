@@ -18,7 +18,6 @@ import type { ApiResponse } from '@mantemap/shared';
 type Params = {
   params: Promise<{
     projectId: string;
-    locationId: string;
     floorPlanId: string;
     markerId: string;
   }>;
@@ -37,10 +36,9 @@ export async function PATCH(request: Request, { params }: Params) {
     const parsed = updateMarkerSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid marker data');
 
-    const { projectId, locationId, floorPlanId, markerId } = await params;
+    const { projectId, floorPlanId, markerId } = await params;
     const result = await editMarker(
       projectId,
-      locationId,
       floorPlanId,
       markerId,
       parsed.data,
@@ -62,8 +60,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, locationId, floorPlanId, markerId } = await params;
-    await removeMarker(projectId, locationId, floorPlanId, markerId, auth.user.id);
+    const { projectId, floorPlanId, markerId } = await params;
+    await removeMarker(projectId, floorPlanId, markerId, auth.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
     if (error instanceof NotFoundError) return notFound('Marker not found');

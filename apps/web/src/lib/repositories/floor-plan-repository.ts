@@ -63,10 +63,28 @@ export async function createFloorPlan(
 export async function findFloorPlanById(
   locationId: string,
   floorPlanId: string,
-  client: PrismaClient = prisma
+  client?: PrismaClient
+): Promise<FloorPlan | null>;
+export async function findFloorPlanById(
+  floorPlanId: string,
+  client?: PrismaClient
+): Promise<FloorPlan | null>;
+export async function findFloorPlanById(
+  locationIdOrFloorPlanId: string,
+  floorPlanIdOrClient?: string | PrismaClient,
+  maybeClient?: PrismaClient
 ): Promise<FloorPlan | null> {
+  // Overload 1: (floorPlanId, client?)
+  if (typeof floorPlanIdOrClient !== 'string') {
+    const client = floorPlanIdOrClient ?? prisma;
+    return client.floorPlan.findFirst({
+      where: { id: locationIdOrFloorPlanId, active: true },
+    });
+  }
+  // Overload 2: (locationId, floorPlanId, client?)
+  const client = (maybeClient ?? prisma) as PrismaClient;
   return client.floorPlan.findFirst({
-    where: { id: floorPlanId, locationId, active: true },
+    where: { id: floorPlanIdOrClient as string, locationId: locationIdOrFloorPlanId, active: true },
   });
 }
 

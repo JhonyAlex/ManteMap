@@ -250,7 +250,6 @@ export async function listMarkers(
 
 export async function editMarker(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   markerId: string,
   input: UpdateMarkerInput,
@@ -259,7 +258,7 @@ export async function editMarker(
   await requireProjectOwner(projectId, userId);
 
   // Verify floor plan exists
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }
@@ -284,7 +283,6 @@ export async function editMarker(
 
 export async function removeMarker(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   markerId: string,
   userId: string
@@ -292,7 +290,7 @@ export async function removeMarker(
   await requireProjectOwner(projectId, userId);
 
   // Verify floor plan exists
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }

@@ -453,7 +453,7 @@ describe('FloorPlanService editMarker', () => {
     );
 
     await expect(
-      editMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MARKER_ID, { x: 0.7 }, MEMBER_ID)
+      editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { x: 0.7 }, MEMBER_ID)
     ).rejects.toThrow();
     expect(repository.updateMarker).not.toHaveBeenCalled();
   });
@@ -465,7 +465,6 @@ describe('FloorPlanService editMarker', () => {
 
     const result = await editMarker(
       PROJECT_ID,
-      LOCATION_ID,
       FLOOR_PLAN_ID,
       MARKER_ID,
       { x: 0.7, y: 0.8 },
@@ -485,7 +484,7 @@ describe('FloorPlanService editMarker', () => {
     vi.mocked(repository.findMarkerById).mockResolvedValue(markerRecord as never);
 
     await expect(
-      editMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MARKER_ID, { x: 1.5 }, OWNER_ID)
+      editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { x: 1.5 }, OWNER_ID)
     ).rejects.toThrow(); // Zod rejects first
     expect(repository.updateMarker).not.toHaveBeenCalled();
   });
@@ -502,7 +501,7 @@ describe('FloorPlanService removeMarker', () => {
     );
 
     await expect(
-      removeMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MARKER_ID, MEMBER_ID)
+      removeMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, MEMBER_ID)
     ).rejects.toThrow();
     expect(repository.deleteMarker).not.toHaveBeenCalled();
   });
@@ -511,7 +510,7 @@ describe('FloorPlanService removeMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
     vi.mocked(repository.deleteMarker).mockResolvedValue(undefined);
 
-    await removeMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MARKER_ID, OWNER_ID);
+    await removeMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, OWNER_ID);
 
     expect(repository.deleteMarker).toHaveBeenCalledWith(FLOOR_PLAN_ID, MARKER_ID);
   });
@@ -520,7 +519,7 @@ describe('FloorPlanService removeMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
 
     await expect(
-      removeMarker(PROJECT_ID, LOCATION_ID, 'clnonexistentxxxxxxx', MARKER_ID, OWNER_ID)
+      removeMarker(PROJECT_ID, 'clnonexistentxxxxxxx', MARKER_ID, OWNER_ID)
     ).rejects.toThrow(NotFoundError);
     expect(repository.deleteMarker).not.toHaveBeenCalled();
   });
