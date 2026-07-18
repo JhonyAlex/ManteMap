@@ -8,16 +8,21 @@ import type { NextAuthConfig } from 'next-auth';
  *
  * Credentials provider and callbacks are added in auth.ts (Node runtime).
  */
+
+const isSecureEnv =
+  process.env.AUTH_URL?.startsWith('https://') ||
+  process.env.NODE_ENV === 'production';
+
 export const authConfig = {
   trustHost: true,
-  debug: process.env.NODE_ENV !== 'production',
+  debug: !isSecureEnv,
   pages: {
     signIn: '/login',
   },
   cookies: {
     sessionToken: {
       options: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureEnv,
         sameSite: 'lax',
       },
     },
@@ -30,7 +35,16 @@ export const authConfig = {
 
       if (isOnDashboard || isOnProjects) {
         if (isLoggedIn) return true;
-        console.log('[middleware] Blocked unauthenticated access to:', nextUrl.pathname);
+        console.log(
+          '[middleware] BLOCKED — no session. AUTH_URL=',
+          process.env.AUTH_URL,
+          'NODE_ENV=',
+          process.env.NODE_ENV,
+          'secure cookies=',
+          isSecureEnv,
+          'path=',
+          nextUrl.pathname
+        );
         return false; // Redirect unauthenticated users to login
       }
 
@@ -38,6 +52,7 @@ export const authConfig = {
     },
     jwt({ token, user }) {
       if (user) {
+        console.log('[auth] JWT callback — creating token for:', user.email);
         // Design: JWT contains only sub, email, name, and role.
         // Auth.js sets token.sub from user.id automatically.
         token.email = user.email as string;
