@@ -22,13 +22,14 @@ Dynamically render validated React Hook Form forms from `DynamicFieldDefinition[
 | EMAIL | `<Input type="email">` | `z.string().email()` |
 | PHONE | `<Input type="tel">` | `z.string()` |
 | FILE, IMAGE | `<DeferredField>` | `z.any().optional()` |
-| ITEM/LOCATION/USER_RELATION | `<DeferredField>` | `z.string().optional()` |
+| ITEM/USER_RELATION | `<DeferredField>` | `z.string().optional()` |
+| LOCATION_RELATION | `<LocationPicker>` | `z.string().cuid()` |
 
 ## Requirements
 
 ### Requirement: Dynamic Zod schema from field definitions
 
-`createFieldValueSchema(fields)` MUST return a `z.ZodObject` whose shape maps each field key to a Zod type matching its `DynamicFieldType`. Per-type validation rules (min/max, minLength/maxLength, pattern) MUST be applied. Required fields MUST reject `undefined`/`null`/empty values.
+`createFieldValueSchema(fields)` MUST return a `z.ZodObject` whose shape maps each field key to a Zod type matching its `DynamicFieldType`. LOCATION_RELATION SHALL validate as `z.string().uuid().optional()` (or required per field config). Per-type validation rules MUST be applied. Required fields MUST reject `undefined`/`null`/empty values.
 
 #### Scenario: Schema shape matches field definitions
 
@@ -54,13 +55,13 @@ Required fields MUST show a visual indicator (asterisk). Zod MUST reject missing
 
 ### Requirement: Field type to input mapping
 
-A field registry MUST map all 13 active `DynamicFieldType` values to a React component. Each SHALL receive `{ field: DynamicFieldDefinition, control, errors }` and render the appropriate HTML input or component.
+A field registry MUST map all 18 `DynamicFieldType` values to a React component. LOCATION_RELATION SHALL map to LocationPicker. Each SHALL receive `{ field: DynamicFieldDefinition, control, errors }` and render the appropriate HTML input or component.
 
 #### Scenario: All active types render
 
-- GIVEN one DynamicFieldDefinition per active type (13 total)
+- GIVEN one DynamicFieldDefinition per active type (18 total including LOCATION_RELATION)
 - WHEN `<DynamicForm fields={allActiveTypes}>` renders
-- THEN 13 inputs appear matching the table above
+- THEN 18 inputs appear matching the table above
 
 ### Requirement: SELECT field rendering
 
@@ -120,13 +121,19 @@ Per-type validation rules MUST be enforced by Zod. NUMBER/DECIMAL/CURRENCY MUST 
 
 ### Requirement: Deferred types as disabled placeholders
 
-FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, and USER_RELATION MUST render a disabled component with placeholder text (e.g., "Coming soon"). The Zod schema MUST treat these as `.optional()` so the form remains submittable.
+FILE, IMAGE, ITEM_RELATION, and USER_RELATION MUST render a disabled component with placeholder text (e.g., "Coming soon"). LOCATION_RELATION MUST render the LocationPicker component (no longer deferred). The Zod schema MUST treat FILE/IMAGE as `.optional()` so the form remains submittable. LOCATION_RELATION MUST validate as a string location ID or null.
 
 #### Scenario: Deferred field does not block submit
 
 - GIVEN a form with one FILE field and one SHORT_TEXT field
 - WHEN the user fills the SHORT_TEXT field and submits
 - THEN the form submits successfully without requiring the FILE field
+
+#### Scenario: LOCATION_RELATION renders LocationPicker
+
+- GIVEN a form with a LOCATION_RELATION field
+- WHEN the form renders
+- THEN a searchable LocationPicker component appears (not a disabled placeholder)
 
 ### Requirement: Form submission yields typed data
 

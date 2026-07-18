@@ -80,83 +80,103 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 3 — Ítems
+## Fase 3 — Ítems ✅
 
-**Objetivo**: Gestión completa de ítems/activos.
+**Objetivo**: Gestión completa de ítems/activos con campos dinámicos.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| CRUD de ítems | ⬜ Pendiente | Crear, editar, eliminar ítems |
-| Ficha del ítem | ⬜ Pendiente | Vista completa con pestañas |
-| Listado con filtros | ⬜ Pendiente | Búsqueda, filtros, orden, paginación |
-| Historial básico | ⬜ Pendiente | Cambios registrados automáticamente |
+| CRUD de ítems (EAV) | ✅ Completado | Item + ItemFieldValue models, JSON value storage |
+| API Routes | ✅ Completado | List/create, detail/update/delete, status transitions |
+| Listado con filtros | ✅ Completado | Búsqueda por nombre, filtro por tipo/estado, paginación |
+| Ficha del ítem | ✅ Completado | Vista completa con campos dinámicos y estado |
+| Formularios crear/editar | ✅ Completado | DynamicForm reutilizado con transformación EAV |
+| Transiciones de estado | ✅ Completado | isFinal enforcement, auto-assign default status |
 
 **Dependencias**: Fase 2 completada.
+**Tests**: 116 (backend) + 106 (UI) = 222
+**Archivado**: 2026-07-17
 
 ---
 
-## Fase 4 — Documentos
+## Fase 4 — Documentos ✅
 
-**Objetivo**: Gestión documental con vencimientos.
+**Objetivo**: Gestión documental con versionado y vencimientos.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Subida de archivos | ⬜ Pendiente | Upload a almacenamiento local/S3 |
-| Metadatos de documentos | ⬜ Pendiente | Nombre, tipo, fechas, versión |
-| Vencimientos | ⬜ Pendiente | Fecha de vencimiento con alertas |
-| Versiones iniciales | ⬜ Pendiente | Historial de reemplazos |
+| StorageDriver abstraction | ✅ Completado | Interface + LocalStorageDriver (S3-ready) |
+| Subida de archivos | ✅ Completado | Upload via multipart FormData, 50MB limit |
+| Versionado completo | ✅ Completado | DocumentVersion inmutable con currentVersionId FK |
+| Vencimientos | ✅ Completado | expiresAt con badges (rojo=vencido, amarillo=por vencer) |
+| API Routes | ✅ Completado | List/create, detail/update/delete, download, versions |
+| UI integrada | ✅ Completado | DocumentList, UploadDialog, VersionHistory en item detail |
 
 **Dependencias**: Fase 3 completada.
+**Tests**: 131
+**Archivado**: 2026-07-18
 
 ---
 
-## Fase 5 — Eventos y calendario
+## Fase 5 — Eventos y calendario ✅
 
-**Objetivo**: Sistema de eventos con recurrencia y calendario.
+**Objetivo**: Sistema de eventos con recurrencia y calendario interactivo.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Eventos CRUD | ⬜ Pendiente | Crear/editar eventos por ítem |
-| Recurrencia | ⬜ Pendiente | Múltiples patrones soportados |
-| Calendario | ⬜ Pendiente | Vista de día/semana/mes |
-| Alertas internas | ⬜ Pendiente | Notificaciones por vencimientos |
+| Event model con RRULE | ✅ Completado | Campo rrule String? para recurrencia |
+| FullCalendar integration | ✅ Completado | Dynamic import, day/timegrid views |
+| Eventos de expiración | ✅ Completado | Virtuales desde Document.expiresAt |
+| EventFormDialog | ✅ Completado | Crear/editar con recurrence picker |
+| Color-coded urgency | ✅ Completado | getExpirationColor utility |
+| Calendario page | ✅ Completado | /[projectId]/calendar con sidebar nav |
+
+**Dependencias**: Fase 3 y Fase 4 completadas.
+**Tests**: 131
+**Archivado**: 2026-07-18
+
+---
+
+## Fase 6 — Ubicaciones y planos ✅
+
+**Objetivo**: Jerarquía de ubicaciones, planos interactivos con marcadores.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Jerarquía de ubicaciones | ✅ Completado | Adjacency List, max 5 niveles, cycle detection |
+| LocationTree component | ✅ Completado | Vista de árbol recursiva |
+| LocationPicker | ✅ Completado | Searchable tree-select para formularios |
+| FloorPlan upload | ✅ Completado | Reusa StorageDriver, validación de tipo/tamaño |
+| LocationMarker model | ✅ Completado | Coordenadas normalizadas (0-1) |
+| React Konva viewer | ✅ Completado | Dynamic import, zoom/pan, draggable markers |
+| LOCATION_RELATION field | ✅ Completado | Activado en field-registry para DynamicForm |
 
 **Dependencias**: Fase 3 completada.
+**Tests**: 311
+**Archivado**: 2026-07-18
 
 ---
 
-## Fase 6 — Ubicaciones
+## Fase 7 — Alertas y notificaciones ✅
 
-**Objetivo**: Jerarquía de ubicaciones y movimiento de ítems.
+**Objetivo**: Alertas proactivas para vencimientos, mantenimiento y cambios de estado.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Jerarquía de ubicaciones | ⬜ Pendiente | Centro > Edificio > Planta > Área > Subárea |
-| Movimiento de ítems | ⬜ Pendiente | Mover entre ubicaciones con historial |
-| Historial de ubicación | ⬜ Pendiente | Traza completa de cambios |
+| Alert model | ✅ Completado | Tipos, severidad, estado, deduplicación por unique constraint |
+| Hybrid generation | ✅ Completado | Event hooks + scan endpoint (doc expiration, events) |
+| Service hooks | ✅ Completado | Fire-and-forget en item/document services |
+| AlertBell component | ✅ Completado | Badge con unread count + dropdown |
+| Alert dashboard | ✅ Completado | /[projectId]/alerts con filtros |
+| Notification preferences | ✅ Completado | Toggles por tipo de alerta por proyecto |
 
-**Dependencias**: Fase 3 completada.
-
----
-
-## Fase 7 — Planos
-
-**Objetivo**: Planos interactivos con marcadores.
-
-| Entregable | Estado | Criterio de aceptación |
-|-----------|--------|----------------------|
-| Subida de planos | ⬜ Pendiente | PNG, JPG, WEBP, SVG |
-| Visualización | ⬜ Pendiente | Zoom, pan, responsive |
-| Marcadores | ⬜ Pendiente | Posicionar ítems con coordenadas normalizadas |
-| Modo edición | ⬜ Pendiente | Arrastrar/mover marcadores |
-| Filtros en plano | ⬜ Pendiente | Filtrar por tipo, estado, capa |
-| Acceso a ficha | ⬜ Pendiente | Click en marcador abre ficha |
-
-**Dependencias**: Fase 3 y Fase 6 completadas.
+**Dependencias**: Fase 4 y Fase 5 completadas.
+**Tests**: 166
+**Archivado**: 2026-07-18
 
 ---
 
-## Fase 8 — Panel e informes
+## Fase 8 — Panel e informes 🔜 Siguiente
 
 **Objetivo**: Dashboard con indicadores y exportación.
 
@@ -166,7 +186,7 @@ Hoja de ruta de desarrollo por fases.
 | Indicadores | ⬜ Pendiente | Ítems activos/inactivos, docs pendientes |
 | Exportación CSV | ⬜ Pendiente | Exportar listados filtrados |
 
-**Dependencias**: Fase 3 completada.
+**Dependencias**: Fases 3-7 completadas.
 
 ---
 
@@ -191,22 +211,23 @@ Hoja de ruta de desarrollo por fases.
 
 ## MVP
 
-El MVP corresponde a las **Fases 0–7** completas.
+El MVP corresponde a las **Fases 0–7** completas (nuestro Phase 8 = ROADMAP Fase 7).
 
 Debe permitir:
 1. Iniciar sesión
 2. Crear proyecto
 3. Crear tipo de ítem con campos personalizados
 4. Crear estados
-5. Crear ítems
-6. Adjuntar documentos
+5. Crear ítems con campos dinámicos
+6. Adjuntar documentos con versionado
 7. Crear eventos con recurrencia
 8. Ver calendario
-9. Crear ubicaciones
+9. Crear ubicaciones jerárquicas
 10. Subir planos y posicionar ítems
 11. Abrir ficha desde el plano
-12. Consultar historial
+12. Recibir alertas proactivas
+13. Configurar preferencias de notificación
 
 ---
 
-> **Última actualización**: 2026-07-17. Phase 2 (Slices 1-4) complete: Item Types, Dynamic Fields, Configurable Statuses, Generated Forms. Phase 3 is next. Production Prisma baseline remains an operational prerequisite.
+> **Última actualización**: 2026-07-18. Phases 2-8 completas vía SDD: Item Types, Dynamic Fields, Statuses, Generated Forms, Items CRUD+UI, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications. ~1,800+ tests. Próxima fase: Dashboard & Reports. Production Prisma baseline (ADR-005) sigue siendo prerequisito para despliegue.

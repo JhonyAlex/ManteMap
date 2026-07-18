@@ -249,55 +249,66 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 
 ### Fase actual
 
-**Fase 2 — Tipos, campos y estados** 🔄 Activa. Fase 0 y Fase 1 están completadas.
+**Fase 9 — Dashboard & Reports** 🔜 Siguiente. Fases 0-8 están completadas.
 
 ### Funciones terminadas
 
 - Monorepositorio configurado (pnpm workspaces + Turborepo)
 - Aplicación Next.js 15 con App Router
-- Schema Prisma base (User, Account, Session, Project, ProjectMember)
+- Schema Prisma completo (User, Account, Session, Project, ProjectMember, ItemType, DynamicField, Status, Item, ItemFieldValue, Document, DocumentVersion, Event, Location, FloorPlan, LocationMarker, Alert, NotificationPreference)
 - Docker Compose para PostgreSQL 16
 - Configuración TypeScript, ESLint, Prettier
 - Packages compartidos (database, shared, validation, ui, config)
-- 7 ADRs documentados (ADR-001 a ADR-008)
+- 8 ADRs documentados (ADR-001 a ADR-008)
 - Documentación completa
 - Desplegado en producción (https://mante.saharapro.team/)
-- Fase 1 completa: autenticación, proyectos, acceso por proyecto y shell protegido.
-- Fase 2 Slice 1: Item Type CRUD por proyecto, con pruebas enfocadas.
-- Fase 2 Slice 2: DynamicField CRUD con 18 tipos, Zod, API routes, ADR-006.
-- Fase 2 Slice 3: Status CRUD con 8 propiedades, reorder, set-default, Zod, API routes, ADR-007.
-- Fase 2 Slice 4: Generated forms — field registry (18 type mappings), 14 field components, Zod schema factory, FormFieldWrapper, DynamicForm component, 33 component tests, ADR-008.
+- 17 dominios de specs en openspec/specs/
+- 8 cambios SDD archivados en openspec/changes/archive/
+- ~1,800+ tests unitarios/componente/integración pasando
 
-### Funcionalidades parcialmente terminadas
+### Fases completadas (vía SDD)
 
-- ItemType, DynamicField y Status CRUD están implementados en el worktree, pero el rollout del schema en producción está bloqueado por el prerrequisito de inspección/backup/baseline del ADR-005.
+| Fase | Entregables principales | Tests |
+|------|------------------------|-------|
+| Fase 0 | Arquitectura, monorepo, Docker, configs | N/A |
+| Fase 1 | Auth, proyectos, acceso por proyecto, shell protegido | ~200 |
+| Fase 2 | ItemTypes, DynamicFields (18 tipos), Statuses, DynamicForm | 423+ |
+| Fase 3 | Items CRUD (EAV con JSON value), API routes, transiciones de estado | 116 |
+| Fase 4 | Items UI (listado, detalle, formularios crear/editar, dropdown estado) | 106 |
+| Fase 5 | Documentos (upload, versionado, expiración, StorageDriver) | 131 |
+| Fase 6 | Eventos y Calendario (FullCalendar, recurrencia RRULE, eventos de expiración) | 131 |
+| Fase 7 | Locations (jerarquía, planos, visor React Konva, LOCATION_RELATION) | 311 |
+| Fase 8 | Alerts & Notifications (generación híbrida, campana, preferencias) | 166 |
 
 ### Funcionalidades pendientes
 
-Ver `ROADMAP.md` para el desglose completo por fases.
+Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Dashboard & Reports**.
 
 ### Bloqueos
 
-- (ninguno conocido)
+- ADR-005: Baseline de Prisma no aplicado en producción — bloquea despliegue de schema
 
 ### Deuda técnica conocida
 
-- Tablas creadas con `prisma db push` en vez de migraciones versionadas. Production schema inspection, backup, and baseline are mandatory before applying the ItemType migration; do not fabricate a baseline migration.
+- Tablas creadas con `prisma db push` en vez de migraciones versionadas. Production schema inspection, backup, and baseline are mandatory before applying migrations.
 - Windows standalone build verification may fail during symlink creation with `EPERM` after compilation and static generation.
+- @mantemap/ui tiene error de typecheck pre-existente (@/lib/utils resolution).
+- 51 integration tests requieren Docker/DB (pre-existente).
+- Preference-based alert filtering no implementado (deferido de Fase 8).
 
 ### Últimas validaciones realizadas
 
-- ✅ Phase 2 Slice 4 lint/typecheck passed.
-- ✅ Phase 2 Slice 4 component test suite passed (33/33).
-- ✅ Phase 2 Slice 3 lint/typecheck passed.
-- ✅ Phase 2 Slice 3 unit test suite passed (507/507).
+- ✅ Phase 8 Alerts: 166 tests passing, PASS WITH WARNINGS (0 CRITICAL)
+- ✅ Phase 7 Locations: 311 tests passing, PASS WITH WARNINGS (0 CRITICAL)
+- ✅ Phase 6 Events: 131 tests passing, PASS WITH WARNINGS (0 CRITICAL)
+- ✅ Phase 5 Documents: 131 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ⚠️ 51 integration tests require Docker/DB (pre-existing).
 - ⚠️ Windows build has known standalone symlink `EPERM` evidence.
 - ✅ Despliegue: landing page en producción
 
 ### Próximo paso recomendado
 
-Continuar con **Fase 3 — Ítems**: CRUD de ítems con formularios generados y estados configurables. El baseline operativo de Prisma (ADR-005) sigue siendo un prerrequisito para el despliegue del schema en producción.
+Continuar con **Fase 9 — Dashboard & Reports**: métricas, reportes, dashboard principal. El baseline operativo de Prisma (ADR-005) sigue siendo un prerrequisito para el despliegue del schema en producción.
 
 ---
 
@@ -347,6 +358,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 | Fecha | Agente | Trabajo realizado | Estado | Próximo paso |
 |-------|--------|-------------------|--------|--------------|
+| 2026-07-18 | OpenCode (mimo-v2.5-pro) | Fases 3-8 completas vía SDD: Items CRUD+UI, Documents, Events+Calendar, Locations+FloorPlans, Alerts+Notifications. ~1,800+ tests. | ✅ Archivado | Fase 9: Dashboard & Reports |
 | 2026-07-17 | OpenCode | Fase 2 completa: Slice 2 (DynamicFields 142 tests), Slice 3 (Statuses 135 tests), Slice 4 (Forms 146 tests). 423+ tests, 3 ADRs, 2 modelos Prisma, DynamicForm + 14 field components. | ✅ Archivado | Fase 3: Ítems |
 | 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | ✅ Completado | Slice 2: campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
@@ -354,5 +366,5 @@ docker compose -f docker-compose.dev.yml up -d
 
 ---
 
-> **Última actualización**: 2026-07-17
-> **Responsable**: OpenCode (Fase 2 completa — Fase 3 próxima)
+> **Última actualización**: 2026-07-18
+> **Responsable**: OpenCode (Fases 2-8 completas — Fase 9 próxima)

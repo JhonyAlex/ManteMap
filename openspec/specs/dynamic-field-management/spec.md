@@ -28,13 +28,19 @@ Access MUST be transitively scoped: caller MUST be a project member. Non-members
 
 ## Requirement: 18 supported field types
 
-MUST support: SHORT_TEXT, LONG_TEXT, NUMBER, DECIMAL, CURRENCY, BOOLEAN, DATE, DATETIME, SELECT, MULTI_SELECT, URL, EMAIL, PHONE, FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, USER_RELATION. Type stored as DB enum, validated at creation. Unknown types MUST return `400`.
+MUST support: SHORT_TEXT, LONG_TEXT, NUMBER, DECIMAL, CURRENCY, BOOLEAN, DATE, DATETIME, SELECT, MULTI_SELECT, URL, EMAIL, PHONE, FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, USER_RELATION. LOCATION_RELATION MUST be fully functional (not deferred). Type stored as DB enum, validated at creation. Unknown types MUST return `400`.
 
 ### Scenario: Reject unknown field type
 
 - GIVEN a project owner creating a field
 - WHEN input includes `type: "CUSTOM_TYPE"`
 - THEN the API returns `400`
+
+### Scenario: LOCATION_RELATION creates successfully
+
+- GIVEN a project owner creating a field
+- WHEN input includes `type: "LOCATION_RELATION"`
+- THEN the field persists and renders as LocationPicker in forms
 
 ## Requirement: Per-ItemType key uniqueness
 

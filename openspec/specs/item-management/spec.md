@@ -82,13 +82,25 @@ Items MUST have a nullable `statusId`. On create, if `statusId` is omitted, the 
 
 ### Requirement: Item list with filters
 
-List endpoint MUST support filtering by `itemTypeId`, `statusId`, and text `search` (matching name). MUST support pagination via `page` and `pageSize`. Field values for `showInList` DynamicFields MUST be batch-loaded in a single query.
+List endpoint MUST support filtering by `itemTypeId`, `statusId`, `locationId`, and text `search` (matching name). MUST support pagination via `page` and `pageSize`. Field values for `showInList` DynamicFields MUST be batch-loaded in a single query. Response MUST include `location` object when `locationId` is populated.
 
 #### Scenario: Filter by type and status
 
 - GIVEN items of types A and B with various statuses
 - WHEN listing with `?itemTypeId=A&statusId=active`
 - THEN only items matching both filters return
+
+#### Scenario: Filter by location
+
+- GIVEN items across multiple locations
+- WHEN listing with `?locationId=room-101-id`
+- THEN only items assigned to that location return
+
+#### Scenario: Item includes location in response
+
+- GIVEN an item with `locationId` pointing to "Room 101"
+- WHEN the list endpoint is called
+- THEN the item response includes `location: { id, name, path }`
 
 #### Scenario: Text search
 
@@ -98,13 +110,13 @@ List endpoint MUST support filtering by `itemTypeId`, `statusId`, and text `sear
 
 ### Requirement: Item detail with field values
 
-Detail endpoint MUST return the item with all its field values hydrated. Each field value MUST include the DynamicField definition for rendering.
+Detail endpoint MUST return the item with all its field values hydrated. Each field value MUST include the DynamicField definition for rendering. Response MUST include the full location object with path when `locationId` is populated.
 
 #### Scenario: Detail returns hydrated values
 
 - GIVEN an item with field values for `name` and `quantity`
 - WHEN the detail endpoint is called
-- THEN the response includes field definitions and values
+- THEN the response includes field definitions, values, and location
 
 ### Requirement: Update item fields
 
@@ -170,7 +182,7 @@ The item detail page MUST render each field value using the appropriate type-spe
 
 ### Requirement: Create/edit wraps DynamicForm with value transformation
 
-Create and edit pages MUST wrap `DynamicForm`. On submit, field values MUST transform from `{ [fieldId]: value }` to `[{ dynamicFieldId, value }]` array format. On edit load, values MUST transform from EAV array to flat object for form pre-population.
+Create and edit pages MUST wrap `DynamicForm`. On submit, field values MUST transform from `{ [fieldId]: value }` to `[{ dynamicFieldId, value }]` array format. On edit load, values MUST transform from EAV array to flat object for form pre-population. `locationId` MUST be included as a top-level field separate from EAV values.
 
 #### Scenario: Submit transforms to EAV format
 
@@ -183,3 +195,31 @@ Create and edit pages MUST wrap `DynamicForm`. On submit, field values MUST tran
 - GIVEN an item with field values `[{ dynamicFieldId: "field-1", value: "Widget" }]`
 - WHEN the edit page loads
 - THEN the form field "field-1" shows "Widget"
+
+#### Scenario: Location field pre-populates
+
+- GIVEN an item with `locationId: "room-101-id"`
+- WHEN the edit page loads
+- THEN the LocationPicker shows "Room 101" with full path
+
+### Requirement: Status Transition Alert Generation
+
+The system SHALL generate alerts when `transitionStatus()` moves an item to an incident, blocking, or final status. Alert severity SHALL map from the status configuration. Generation MUST be idempotent.
+
+#### Scenario: Alert on incident status transition
+
+- GIVEN an item with status "Active"
+- WHEN status transitions to "Incident" (isIncident=true)
+- THEN a critical-severity alert is generated with alertType=status_change
+
+#### Scenario: Alert on blocking status transition
+
+- GIVEN an item
+- WHEN status transitions to a status where isBlocking=true
+- THEN a warning-severity alert is generated
+
+#### Scenario: No alert on normal transition
+
+- GIVEN an item with status "Inactive"
+- WHEN status transitions to "Active"
+- THEN no alert is generated (neither incident, blocking, nor final)

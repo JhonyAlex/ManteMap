@@ -86,3 +86,19 @@ Zod schemas SHALL validate create/update payloads. startDate MUST be a valid dat
 - GIVEN startDate = 2026-03-15, endDate = null
 - WHEN create is attempted
 - THEN event is created successfully
+
+### Requirement: Upcoming Event Alert Generation
+
+The alert scan endpoint SHALL generate alerts for recurring events with an occurrence within the next 7 days. Alerts SHALL include event title, date, and linked item (if any). Generation MUST be idempotent.
+
+#### Scenario: Alert for upcoming recurring event
+
+- GIVEN a recurring maintenance event with next occurrence in 3 days
+- WHEN the alert scan endpoint is called
+- THEN an info-severity alert is generated with alertType=upcoming_event
+
+#### Scenario: No alert for distant event
+
+- GIVEN a recurring event with next occurrence in 14 days
+- WHEN the alert scan endpoint is called
+- THEN no alert is generated (beyond 7-day threshold)
