@@ -1,4 +1,4 @@
-import type { JsonValue } from '@prisma/client/runtime/library';
+import type { Prisma } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,7 +17,7 @@ interface AlertLike {
   severity: string;
   title: string;
   message: string | null;
-  metadata: JsonValue | null;
+  metadata: Prisma.JsonValue | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import type { JsonValue } from '@prisma/client/runtime/library';
+import type { Prisma } from '@prisma/client';
 import type { DeliveryResult, NotificationChannel } from './types';
 import { formatAlertMessage } from '../notification-template-service';
 
@@ -12,10 +12,10 @@ export class TelegramChannel implements NotificationChannel {
       severity: string;
       title: string;
       message: string | null;
-      metadata: JsonValue | null;
+      metadata: Prisma.JsonValue | null;
     },
     user: { id: string; name?: string | null; email: string },
-    config?: JsonValue,
+    config?: Prisma.JsonValue,
     projectName?: string,
   ): Promise<DeliveryResult> {
     const cfg = config as Record<string, unknown> | undefined;

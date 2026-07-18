@@ -10,8 +10,8 @@ import { EmailChannel } from '@/lib/services/channels/email-channel';
 import { SlackChannel } from '@/lib/services/channels/slack-channel';
 import { TeamsChannel } from '@/lib/services/channels/teams-channel';
 import { TelegramChannel } from '@/lib/services/channels/telegram-channel';
+import type { Prisma } from '@prisma/client';
 import type { NotificationChannel } from '@/lib/services/channels/types';
-import type { JsonValue } from '@prisma/client/runtime/library';
 import type { ApiResponse } from '@mantemap/shared';
 
 const channels: Record<string, NotificationChannel> = {
@@ -77,7 +77,7 @@ export async function POST(
         metadata: null,
       },
       { id: auth.user.id, name: auth.user.name || null, email: auth.user.email },
-      channelConfig.config as JsonValue,
+      channelConfig.config as Prisma.JsonValue,
       'Test Project',
     );
 

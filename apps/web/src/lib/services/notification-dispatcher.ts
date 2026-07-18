@@ -1,4 +1,4 @@
-import type { JsonValue } from '@prisma/client/runtime/library';
+import type { Prisma } from '@prisma/client';
 import type { ChannelRegistry } from './channels/channel-registry';
 import type { UserChannelConfig, PrismaClient } from '@mantemap/database';
 
@@ -12,7 +12,7 @@ export interface AlertForDispatch {
   severity: string;
   title: string;
   message: string | null;
-  metadata: JsonValue | null;
+  metadata: Prisma.JsonValue | null;
   projectId: string;
 }
 
@@ -133,11 +133,11 @@ export class NotificationDispatcher {
       if (!channel) return;
 
       // Get channel config for non-email channels
-      let config: JsonValue | undefined;
+      let config: Prisma.JsonValue | undefined;
       if (channelType !== 'email') {
         const channelConfig = await this.deps.getUserChannelConfig(member.userId, channelType);
         if (!channelConfig) return;
-        config = channelConfig.config as JsonValue;
+        config = channelConfig.config as Prisma.JsonValue;
       }
 
       // Send

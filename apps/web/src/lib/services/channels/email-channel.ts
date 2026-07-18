@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import type { JsonValue } from '@prisma/client/runtime/library';
+import type { Prisma } from '@prisma/client';
 import type { DeliveryResult, NotificationChannel } from './types';
 import { formatAlertMessage } from '../notification-template-service';
 
@@ -34,10 +34,10 @@ export class EmailChannel implements NotificationChannel {
       severity: string;
       title: string;
       message: string | null;
-      metadata: JsonValue | null;
+      metadata: Prisma.JsonValue | null;
     },
     user: { id: string; name?: string | null; email: string },
-    _config?: JsonValue,
+    _config?: Prisma.JsonValue,
     projectName?: string,
   ): Promise<DeliveryResult> {
     const transporter = this.getTransporter();
