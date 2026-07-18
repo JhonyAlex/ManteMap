@@ -175,9 +175,23 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
         } flex-1 flex-col bg-sidebar-background md:static md:flex md:w-auto`}
       >
         <nav aria-label="Projects" className="flex-1 overflow-y-auto p-4">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-            Projects
-          </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+              Projects
+            </h2>
+            <Link
+              href="/projects/new"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors motion-reduce:transition-none"
+              aria-label="New project"
+              title="New project"
+              onClick={closeMobile}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </Link>
+          </div>
 
           {projects.length === 0 ? (
             <p className="text-sm text-muted-foreground">No projects yet</p>

@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getDashboardProjects } from '@/lib/services/dashboard-service';
 import { getProjectMetrics } from '@/lib/services/metrics-service';
@@ -73,9 +74,15 @@ export default async function DashboardPage() {
 
       {projects.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">
+          <p className="mb-4 text-muted-foreground">
             You don&apos;t have any projects yet. Create your first project to get started.
           </p>
+          <Link
+            href="/projects/new"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+          >
+            Create Project
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
