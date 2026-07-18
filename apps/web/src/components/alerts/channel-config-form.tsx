@@ -104,17 +104,13 @@ export function ChannelConfigForm({ projectId, channelType }: ChannelConfigFormP
     description: '',
   };
 
-  type FormValues = z.infer<typeof schema>;
-
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: existingConfig
-      ? (existingConfig.config as FormValues)
-      : undefined,
+    defaultValues: (existingConfig?.config ?? {}) as Record<string, string>,
   });
 
   if (isLoading) {
@@ -127,7 +123,7 @@ export function ChannelConfigForm({ projectId, channelType }: ChannelConfigFormP
     );
   }
 
-  function onSubmit(values: FormValues) {
+  function onSubmit(values: Record<string, string>) {
     upsert.mutate({
       channelType,
       config: values as Record<string, unknown>,
