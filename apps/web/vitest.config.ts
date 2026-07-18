@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./vitest.setup.ts', './vitest.setup-component.ts'],
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', '../../packages/validation/src/**/*.test.ts', '../../packages/shared/src/**/*.test.ts', '../../packages/database/src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', '../../packages/validation/src/**/*.test.ts', '../../packages/shared/src/**/*.test.ts', '../../packages/database/src/**/*.test.ts', '../../packages/ui/src/**/*.test.tsx'],
     exclude: ['node_modules', '.next', 'dist', '**/node_modules/**/*.test.ts'],
     coverage: {
       provider: 'v8',

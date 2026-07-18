@@ -219,7 +219,7 @@ export function createFieldValueSchema(
   const shape: Record<string, z.ZodTypeAny> = {};
 
   /** Deferred types — always optional, placeholder schema */
-  const deferredTypes = new Set(['FILE', 'IMAGE', 'ITEM_RELATION', 'LOCATION_RELATION', 'USER_RELATION']);
+  const deferredTypes = new Set(['FILE', 'IMAGE', 'ITEM_RELATION', 'USER_RELATION']);
 
   for (const field of fields) {
     let schema: z.ZodTypeAny;
@@ -331,6 +331,11 @@ export function createFieldValueSchema(
         schema = z.string();
         break;
 
+      // --- LOCATION_RELATION (location ID — cuid format) ---
+      case 'LOCATION_RELATION':
+        schema = z.string().cuid('Must be a valid location ID');
+        break;
+
       // --- Deferred types ---
       default:
         // All unknown or deferred types become optional strings
@@ -352,6 +357,10 @@ export function createFieldValueSchema(
     } else {
       // Optional — make omitable and apply default if present
       schema = schema.optional();
+      // LOCATION_RELATION also accepts null (location can be cleared)
+      if (field.type === 'LOCATION_RELATION') {
+        schema = schema.nullable();
+      }
       if (field.defaultValue !== undefined && field.defaultValue !== null) {
         // Cast to any because .default() type is complex to narrow here
         schema = (schema as z.ZodOptional<z.ZodTypeAny>).default(field.defaultValue);

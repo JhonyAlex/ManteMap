@@ -55,6 +55,16 @@ export {
 export { Badge, badgeVariants } from './components/badge';
 export type { BadgeProps } from './components/badge';
 export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from './components/card';
+export { Progress } from './components/progress';
+export type { ProgressProps } from './components/progress';
+export { Skeleton } from './components/skeleton';
+export {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,

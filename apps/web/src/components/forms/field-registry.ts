@@ -16,13 +16,15 @@ import { UrlFieldInput } from './fields/url-field';
 import { EmailFieldInput } from './fields/email-field';
 import { PhoneFieldInput } from './fields/phone-field';
 import { DeferredFieldInput } from './fields/deferred-placeholder';
+import { LocationRelationField } from './fields/location-relation-field';
 
 /**
  * Field registry mapping each DynamicFieldType to its React component.
  *
- * 13 active types have real input components.
- * 5 deferred types (FILE, IMAGE, ITEM_RELATION, LOCATION_RELATION, USER_RELATION)
+ * 14 active types have real input components.
+ * 4 deferred types (FILE, IMAGE, ITEM_RELATION, USER_RELATION)
  * render the DeferredFieldPlaceholder.
+ * LOCATION_RELATION renders LocationRelationField (LocationPicker).
  */
 export const fieldRegistry: Record<DynamicFieldType, ComponentType<FieldInputProps>> = {
   SHORT_TEXT: TextFieldInput,
@@ -41,6 +43,6 @@ export const fieldRegistry: Record<DynamicFieldType, ComponentType<FieldInputPro
   FILE: DeferredFieldInput,
   IMAGE: DeferredFieldInput,
   ITEM_RELATION: DeferredFieldInput,
-  LOCATION_RELATION: DeferredFieldInput,
+  LOCATION_RELATION: LocationRelationField,
   USER_RELATION: DeferredFieldInput,
 };

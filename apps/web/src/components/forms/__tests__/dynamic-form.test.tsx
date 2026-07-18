@@ -453,8 +453,12 @@ describe('fieldRegistry', () => {
     expect(fieldRegistry.FILE).toBe(DeferredFieldInput);
     expect(fieldRegistry.IMAGE).toBe(DeferredFieldInput);
     expect(fieldRegistry.ITEM_RELATION).toBe(DeferredFieldInput);
-    expect(fieldRegistry.LOCATION_RELATION).toBe(DeferredFieldInput);
     expect(fieldRegistry.USER_RELATION).toBe(DeferredFieldInput);
+  });
+
+  it('maps LOCATION_RELATION to LocationRelationField (not deferred)', () => {
+    expect(fieldRegistry.LOCATION_RELATION).toBeDefined();
+    expect(fieldRegistry.LOCATION_RELATION).not.toBe(DeferredFieldInput);
   });
 });
 

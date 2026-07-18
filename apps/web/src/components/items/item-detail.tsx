@@ -120,6 +120,17 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Fields</h2>
         </div>
+        {/* Location */}
+        {item.location && (
+          <div className="flex items-start justify-between px-4 py-3 border-b">
+            <span className="text-sm font-medium text-muted-foreground">
+              Location
+            </span>
+            <span className="text-sm">
+              {item.location.name}
+            </span>
+          </div>
+        )}
         {!item.fieldValues || item.fieldValues.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-muted-foreground">
             No fields configured.

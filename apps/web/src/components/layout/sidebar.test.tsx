@@ -135,6 +135,28 @@ describe('Sidebar', () => {
 
       expect(screen.queryByRole('link', { name: /calendar/i })).not.toBeInTheDocument();
     });
+
+    it('shows Dashboard nav link when a project is active', () => {
+      mockUsePathname.mockReturnValue('/projects/proj-1');
+      render(<Sidebar projects={projects} />);
+
+      expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+    });
+
+    it('Dashboard link points to the project dashboard route', () => {
+      mockUsePathname.mockReturnValue('/projects/proj-1');
+      render(<Sidebar projects={projects} />);
+
+      const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
+      expect(dashboardLink).toHaveAttribute('href', '/projects/proj-1/dashboard');
+    });
+
+    it('does not show Dashboard link when no project is active', () => {
+      mockUsePathname.mockReturnValue('/dashboard');
+      render(<Sidebar projects={projects} />);
+
+      expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument();
+    });
   });
 
   describe('user info', () => {

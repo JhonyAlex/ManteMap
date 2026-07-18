@@ -61,6 +61,7 @@ const mockItem: ItemDetailType = {
   slug: 'pump-a',
   itemTypeId: 'type-1',
   statusId: 'status-1',
+  locationId: null,
   createdAt: '2026-07-15T10:00:00Z',
   updatedAt: '2026-07-15T10:00:00Z',
   status: {

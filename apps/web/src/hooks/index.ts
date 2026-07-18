@@ -47,3 +47,28 @@ export type {
   CreateEventPayload,
   UpdateEventPayload,
 } from './use-events';
+
+export {
+  useAlerts,
+  useUnreadCount,
+  useAcknowledge,
+  useDismiss,
+  alertKeys,
+} from './use-alerts';
+
+export type {
+  Alert,
+  UseAlertsOptions,
+  UnreadCount,
+} from './use-alerts';
+
+export {
+  useNotificationPreferences,
+  useUpdateNotificationPreference,
+  preferenceKeys,
+} from './use-notification-preferences';
+
+export type {
+  NotificationPreference,
+  UpdatePreferenceInput,
+} from './use-notification-preferences';

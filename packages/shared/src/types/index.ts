@@ -1,6 +1,7 @@
 // ManteMap — Tipos comunes
 
 export * from './domain';
+export * from './metrics';
 
 /** Respuesta estándar de la API */
 export interface ApiResponse<T = unknown> {

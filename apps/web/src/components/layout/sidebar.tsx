@@ -202,6 +202,17 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                     {active && (
                       <>
                         <Link
+                          href={`/projects/${project.id}/dashboard`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/dashboard')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Dashboard
+                        </Link>
+                        <Link
                           href={`/projects/${project.id}/items`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/items')
@@ -222,6 +233,17 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           onClick={closeMobile}
                         >
                           Calendar
+                        </Link>
+                        <Link
+                          href={`/projects/${project.id}/alerts`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/alerts')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Alerts
                         </Link>
                       </>
                     )}

@@ -34,6 +34,7 @@ model User {
   projects       ProjectMember[]
   ownedProjects  Project[]
   uploadedDocs   DocumentVersion[]
+  notificationPreferences NotificationPreference[]
 
   @@map("users")
 }
@@ -110,7 +111,10 @@ model Project {
   owner   User             @relation(fields: [ownerId], references: [id])
   members ProjectMember[]
   itemTypes ItemType[]
+  locations Location[]
   events    Event[]
+  alerts                Alert[]
+  notificationPreferences NotificationPreference[]
 
   @@index([ownerId])
   @@index([status])
@@ -242,18 +246,22 @@ model Item {
   slug        String
   itemTypeId  String
   statusId    String?
+  locationId  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   itemType    ItemType       @relation(fields: [itemTypeId], references: [id], onDelete: Cascade)
   status      Status?        @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  location    Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
   fieldValues ItemFieldValue[]
   documents   Document[]
   events      Event[]
+  markers     LocationMarker[]
 
   @@unique([itemTypeId, slug])
   @@index([itemTypeId])
   @@index([statusId])
+  @@index([locationId])
   @@map("items")
 }
 
@@ -284,6 +292,69 @@ enum ProjectRole {
   MANAGER
   MEMBER
   VIEWER
+}
+
+// -------------------------------------------
+// Locations (hierarchy)
+// -------------------------------------------
+
+model Location {
+  id        String   @id @default(cuid())
+  projectId String
+  parentId  String?
+  name      String
+  level     Int      // 0=Center, 1=Building, 2=Floor, 3=Room, 4=Zone
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent   Location?  @relation("LocationHierarchy", fields: [parentId], references: [id])
+  children Location[] @relation("LocationHierarchy")
+  items    Item[]
+  floorPlans FloorPlan[]
+
+  @@index([projectId, parentId])
+  @@index([projectId, level])
+  @@map("locations")
+}
+
+model FloorPlan {
+  id         String   @id @default(cuid())
+  locationId String
+  name       String
+  imageUrl   String   // StorageDriver path
+  width      Int      // Original image width
+  height     Int      // Original image height
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  location Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  markers  LocationMarker[]
+
+  @@index([locationId])
+  @@map("floor_plans")
+}
+
+model LocationMarker {
+  id          String   @id @default(cuid())
+  floorPlanId String
+  itemId      String?
+  x           Float    // Normalized 0-1
+  y           Float    // Normalized 0-1
+  label       String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  floorPlan FloorPlan @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  item      Item?      @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([floorPlanId])
+  @@index([itemId])
+  @@map("location_markers")
 }
 
 // -------------------------------------------
@@ -328,6 +399,70 @@ model DocumentVersion {
   @@unique([documentId, version])
   @@index([documentId])
   @@map("document_versions")
+}
+
+// -------------------------------------------
+// Alerts & Notifications
+// -------------------------------------------
+
+enum AlertType {
+  DOCUMENT_EXPIRING
+  STATUS_INCIDENT
+  STATUS_BLOCKING
+  STATUS_FINAL
+  EVENT_UPCOMING
+}
+
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  DISMISSED
+}
+
+model Alert {
+  id             String        @id @default(cuid())
+  projectId      String
+  alertType      AlertType
+  severity       AlertSeverity
+  status         AlertStatus   @default(ACTIVE)
+  sourceType     String
+  sourceId       String
+  title          String
+  message        String?
+  metadata       Json?
+  acknowledgedAt DateTime?
+  dismissedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, sourceId, alertType])
+  @@index([projectId, status, severity])
+  @@index([projectId, createdAt])
+  @@map("alerts")
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  alertType AlertType
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId, alertType])
+  @@map("notification_preferences")
 }
 
 // -------------------------------------------

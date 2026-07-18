@@ -9,3 +9,6 @@ export * from './status';
 export * from './item';
 export * from './document';
 export * from './event';
+export * from './location';
+export * from './floor-plan';
+export * from './alert';
