@@ -13,7 +13,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { loginUserSchema } from '@mantemap/validation';
 
@@ -24,7 +23,6 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -51,27 +49,16 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const result = await signIn('credentials', {
+      // Use server-side redirect so Set-Cookie and redirect happen in the
+      // same HTTP response — the browser gets the session cookie natively.
+      await signIn('credentials', {
         email: parsed.data.email,
         password: parsed.data.password,
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/dashboard',
       });
-
-      if (result?.error) {
-        setErrors({ general: 'Invalid email or password. Please try again.' });
-        return;
-      }
-
-      if (!result?.ok) {
-        setErrors({ general: 'Sign in failed. Please try again.' });
-        return;
-      }
-
-      // Force a full page reload so the browser picks up the session cookie.
-      // router.push() does a client-side navigation that may not include
-      // the newly-set cookie on the first request, causing middleware to
-      // bounce back to /login.
-      window.location.href = result.url ?? '/dashboard';
+      // signIn with redirect:true throws on error, navigates on success.
+      // If we reach here, something unexpected happened.
     } catch {
       setErrors({ general: 'An unexpected error occurred. Please try again.' });
     } finally {
