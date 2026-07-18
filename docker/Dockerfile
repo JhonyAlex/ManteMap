@@ -47,6 +47,13 @@ COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
 # Prisma Client's native query engine is generated outside Next.js standalone tracing.
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/.prisma ./node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/.prisma
 
+# Install prisma CLI for migrations — tiny overhead, robust path resolution
+RUN npm install -g prisma@6
+
+# Entrypoint script
+COPY docker/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && chown nextjs:nodejs /app/docker-entrypoint.sh
+
 # Storage directory
 RUN mkdir -p /app/storage && chown nextjs:nodejs /app/storage
 
@@ -55,4 +62,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "apps/web/server.js"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
