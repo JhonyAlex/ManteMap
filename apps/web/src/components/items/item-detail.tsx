@@ -37,6 +37,7 @@ import { useDeleteItem } from '@/hooks/use-items';
 import type { ItemDetail as ItemDetailType } from '@/hooks/use-items';
 import { DocumentList } from './documents/document-list';
 import { UploadDialog } from './documents/upload-dialog';
+import { QRCodeDisplay } from './qr-code-display';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -56,6 +57,7 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const deleteMutation = useDeleteItem(projectId, item.id);
 
   const handleDelete = useCallback(() => {
@@ -106,6 +108,12 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
           >
             Edit
           </Link>
+          <button
+            onClick={() => setQrOpen(true)}
+            className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            Show QR
+          </button>
           <button
             onClick={() => setDeleteOpen(true)}
             className="inline-flex h-9 items-center justify-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
@@ -172,6 +180,19 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
         open={uploadOpen}
         onOpenChange={setUploadOpen}
       />
+
+      {/* QR code dialog */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Code — {item.name}</DialogTitle>
+            <DialogDescription>
+              Scan this QR code to open the item detail page.
+            </DialogDescription>
+          </DialogHeader>
+          <QRCodeDisplay projectId={projectId} itemId={item.id} />
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
