@@ -22,7 +22,10 @@ export async function listItemTypes(projectId: string, userId: string) {
 
 export async function getItemType(projectId: string, itemTypeId: string, userId: string) {
   await requireProjectMember(projectId, userId);
-  const itemType = await findItemTypeById(projectId, itemTypeId);
+  const itemType = await findItemTypeById(projectId, itemTypeId, {
+    dynamicFields: { where: { active: true }, orderBy: { order: 'asc' } },
+    statuses: { where: { active: true }, orderBy: { order: 'asc' } },
+  });
   if (!itemType) throw new NotFoundError('Item type', itemTypeId);
   return { itemType };
 }

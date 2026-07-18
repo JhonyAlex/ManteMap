@@ -47,3 +47,6 @@ pnpm-debug.log*
 
 # Misc
 *.tsbuildinfo
+
+# Document storage (local driver)
+storage/

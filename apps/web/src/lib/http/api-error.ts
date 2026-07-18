@@ -43,6 +43,16 @@ export function internalError(_message?: string) {
   return apiError(500, 'Internal server error', 'INTERNAL_ERROR');
 }
 
+/** 413 Payload Too Large */
+export function payloadTooLarge(message: string = 'File size exceeds maximum') {
+  return apiError(413, message, 'PAYLOAD_TOO_LARGE');
+}
+
+/** 415 Unsupported Media Type */
+export function unsupportedMediaType(message: string = 'File type not allowed') {
+  return apiError(415, message, 'UNSUPPORTED_MEDIA_TYPE');
+}
+
 /** 503 Service Unavailable */
 export function serviceUnavailable(_message?: string) {
   return apiError(503, 'Service temporarily unavailable', 'SERVICE_UNAVAILABLE');

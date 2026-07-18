@@ -7,11 +7,11 @@ export default function HomePage() {
           Plataforma de gestión documental, activos, vencimientos y planos interactivos.
         </p>
         <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
-          <h2 className="mb-2 text-xl font-semibold">Fase 0 — Arquitectura</h2>
+          <h2 className="mb-2 text-xl font-semibold">Fase 2 — Tipos, campos y estados</h2>
           <p className="text-muted-foreground">
-            La aplicación base está configurada. Consulta el{' '}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono">ROADMAP.md</code>{' '}
-            para ver el progreso del desarrollo.
+            La Fase 1 está completa. El CRUD de tipos de ítem de la primera entrega de la Fase 2
+            está implementado y desplegado. Los campos dinámicos y los estados configurables son
+            los próximos pasos.
           </p>
         </div>
       </div>

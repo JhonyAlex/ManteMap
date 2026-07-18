@@ -27,9 +27,18 @@ export interface DynamicFormProps {
 export function DynamicForm({ fields, onSubmit, defaultValues }: DynamicFormProps) {
   const schema = createFieldValueSchema(fields);
 
+  // Extract default values from field definitions and merge with explicit defaults
+  const fieldDefaults: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (f.defaultValue !== undefined && f.defaultValue !== null) {
+      fieldDefaults[f.key] = f.defaultValue;
+    }
+  }
+  const mergedDefaults = { ...fieldDefaults, ...(defaultValues ?? {}) };
+
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues ?? {},
+    defaultValues: mergedDefaults,
   });
 
   const activeFields = fields

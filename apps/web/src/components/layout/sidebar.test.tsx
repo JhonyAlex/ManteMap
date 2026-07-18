@@ -105,6 +105,36 @@ describe('Sidebar', () => {
       const betaLink = screen.getByRole('link', { name: /beta project/i });
       expect(betaLink).not.toHaveAttribute('aria-current', 'page');
     });
+
+    it('shows Calendar nav link when a project is active', () => {
+      mockUsePathname.mockReturnValue('/projects/proj-1');
+      render(<Sidebar projects={projects} />);
+
+      expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument();
+    });
+
+    it('shows Items nav link when a project is active', () => {
+      mockUsePathname.mockReturnValue('/projects/proj-1');
+      render(<Sidebar projects={projects} />);
+
+      expect(screen.getByRole('link', { name: /^items$/i })).toBeInTheDocument();
+    });
+
+    it('highlights Calendar link when on calendar page', () => {
+      mockUsePathname.mockReturnValue('/projects/proj-1/calendar');
+      render(<Sidebar projects={projects} />);
+
+      const calendarLink = screen.getByRole('link', { name: /calendar/i });
+      // Calendar link is visually highlighted via bg-sidebar-accent class
+      expect(calendarLink.className).toContain('bg-sidebar-accent');
+    });
+
+    it('does not show Calendar link when no project is active', () => {
+      mockUsePathname.mockReturnValue('/dashboard');
+      render(<Sidebar projects={projects} />);
+
+      expect(screen.queryByRole('link', { name: /calendar/i })).not.toBeInTheDocument();
+    });
   });
 
   describe('user info', () => {

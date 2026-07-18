@@ -1,3 +1,4 @@
+import type { Prisma } from '@mantemap/database';
 import prisma from '@mantemap/database';
 import type { ItemType, PrismaClient } from '@mantemap/database';
 
@@ -26,10 +27,12 @@ export async function findItemTypesByProject(
 export async function findItemTypeById(
   projectId: string,
   itemTypeId: string,
+  include?: Prisma.ItemTypeInclude,
   client: PrismaClient = prisma
 ): Promise<ItemType | null> {
   return client.itemType.findFirst({
     where: { id: itemTypeId, projectId },
+    include: include ?? undefined,
   });
 }
 
@@ -73,7 +76,7 @@ export async function updateItemType(
     if (result.count === 0) {
       throw Object.assign(new Error('Item type not found'), { code: 'P2025' });
     }
-    const itemType = await findItemTypeById(projectId, itemTypeId, client);
+    const itemType = await findItemTypeById(projectId, itemTypeId, undefined, client);
     if (!itemType) throw Object.assign(new Error('Item type not found'), { code: 'P2025' });
     return itemType;
   });

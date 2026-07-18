@@ -54,7 +54,7 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 2 — Tipos, campos y estados 🔄 Activa
+## Fase 2 — Tipos, campos y estados ✅
 
 **Objetivo**: Sistema configurable de tipos de ítems con campos dinámicos.
 
@@ -66,7 +66,17 @@ Hoja de ruta de desarrollo por fases.
 | Formularios generados | ✅ Completado | Formulario se genera desde definición. Field registry, Zod factory, RHF + shadcn/ui |
 | Validación de campos | ✅ Completado | Zod valida según definición del campo. Schema factory con reglas por tipo |
 
-**Dependencias**: Fase 1 completada. Fase 2 completa (4 slices: Item Types, Dynamic Fields, Configurable Statuses, Generated Forms).
+**Dependencias**: Fase 1 completada. Fase 2 completada (5 slices: Item Types, Dynamic Fields, Configurable Statuses, Generated Forms, Field Validation).
+
+**Criterio de cierre**:
+- ✅ Tipos de ítem CRUD por proyecto
+- ✅ 18 tipos de campo dinámico con API CRUD
+- ✅ Estados configurables con colores, iconos, y default transaccional
+- ✅ Formularios generados desde definiciones (DynamicForm + field registry)
+- ✅ Zod schema factory con validación por tipo
+- ✅ 8 ADRs documentados (ADR-001 a ADR-008)
+- ✅ 423+ tests acumulados en Fase 2
+- ✅ Lint, typecheck pasan
 
 ---
 

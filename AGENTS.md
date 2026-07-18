@@ -347,9 +347,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 | Fecha | Agente | Trabajo realizado | Estado | Próximo paso |
 |-------|--------|-------------------|--------|--------------|
-| 2026-07-17 | OpenCode | Fase 2 Slice 4: Generated forms (field registry, 14 components, Zod factory, DynamicForm, tests, ADR-008) | ✅ Completado | Fase 3: Ítems |
-| 2026-07-17 | OpenCode | Fase 2 Slice 3: Configurable Statuses (8 properties, repository, service, 4 route files, tests, ADR-007) | ✅ Completado | Slice 4: formularios generados |
-| 2026-07-17 | OpenCode | Fase 2 Slice 2: DynamicField CRUD (18 tipos), Zod, API routes, reorder, ADR-006 | ✅ Completado | Slice 3: estados configurables |
+| 2026-07-17 | OpenCode | Fase 2 completa: Slice 2 (DynamicFields 142 tests), Slice 3 (Statuses 135 tests), Slice 4 (Forms 146 tests). 423+ tests, 3 ADRs, 2 modelos Prisma, DynamicForm + 14 field components. | ✅ Archivado | Fase 3: Ítems |
 | 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | ✅ Completado | Slice 2: campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
 | 2026-07-15 | Deploy | Despliegue en producción (Dokploy + Docker) | ✅ Live | https://mante.saharapro.team/ |
@@ -357,4 +355,4 @@ docker compose -f docker-compose.dev.yml up -d
 ---
 
 > **Última actualización**: 2026-07-17
-> **Responsable**: OpenCode (Phase 2 Slice 4)
+> **Responsable**: OpenCode (Fase 2 completa — Fase 3 próxima)

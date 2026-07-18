@@ -191,7 +191,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                       href={`/projects/${project.id}`}
                       aria-current={active ? 'page' : undefined}
                       className={`block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                        active
+                        active && !pathname.includes('/items')
                           ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
                           : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
                       }`}
@@ -199,6 +199,32 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                     >
                       {project.name}
                     </Link>
+                    {active && (
+                      <>
+                        <Link
+                          href={`/projects/${project.id}/items`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/items')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Items
+                        </Link>
+                        <Link
+                          href={`/projects/${project.id}/calendar`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/calendar')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Calendar
+                        </Link>
+                      </>
+                    )}
                   </li>
                 );
               })}

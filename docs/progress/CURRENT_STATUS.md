@@ -6,9 +6,11 @@
 
 ## Fase activa
 
-**Fase 2 — Tipos, campos y estados** 🔄 Activa
+**Fase 2 — Tipos, campos y estados** ✅ Completada
 
-Fase 0 y Fase 1 están completadas. **Slice 1 (Item Types), Slice 2 (Dynamic Fields), Slice 3 (Configurable Statuses), y Slice 4 (Generated Forms) completados.** Los formularios se generan dinámicamente desde definiciones de campo usando un field registry (13 tipos activos + 5 diferidos), factory de esquemas Zod, React Hook Form, y componentes shadcn/ui. ADR-008 documenta la decisión.
+Fase 0 y Fase 1 están completadas. **Fase 2 completa (5 slices):** Item Types, Dynamic Fields (18 tipos, 142 tests), Configurable Statuses (135 tests), Generated Forms (field registry, Zod factory, DynamicForm, 14 componentes, 146 tests). 8 ADRs documentados. 423+ tests acumulados en Fase 2.
+
+**Próximo: Fase 3 — Ítems.**
 
 ---
 
@@ -41,7 +43,7 @@ Fase 0 y Fase 1 están completadas. **Slice 1 (Item Types), Slice 2 (Dynamic Fie
 - ✅ Phase 2 Slice 2: DynamicField model (18 types), Zod validation, repository, service, API routes anidadas, reorder endpoint, soft-delete, include en ItemType GET, ADR-006 documentado.
 - ✅ Phase 2 Slice 3: Status model (8 properties + 3 deferred), Zod validation, repository, service, API routes (collection, resource, reorder, set-default), soft-delete, isDefault transaction enforcement, include en ItemType GET, ADR-007 documentado.
 - ✅ Phase 2 Slice 4: Generated forms — field registry (18 type mappings), 14 field components (13 active + 1 deferred placeholder), Zod schema factory (`createFieldValueSchema`), FormFieldWrapper, DynamicForm component, 33 component tests, ADR-008 documentado.
-- ✅ 7 ADRs documentados (ADR-001 a ADR-008).
+- ✅ 8 ADRs documentados (ADR-001 a ADR-008).
 - ✅ Docker Compose para PostgreSQL 16 con healthcheck.
 - ✅ Configuración TypeScript, ESLint, Prettier funcionando.
 - ✅ Packages compartidos: database, shared, validation, ui, config.
@@ -87,10 +89,10 @@ pnpm dev
 ## Qué comando ejecutar para validar
 
 ```bash
-pnpm lint              # ✅ Pass (Phase 2 Slice 3 verified)
-pnpm typecheck         # ✅ Pass (Phase 2 Slice 3 verified)
+pnpm lint              # ✅ Pass (Phase 2 Slice 4 verified)
+pnpm typecheck         # ✅ Pass (Phase 2 Slice 4 verified)
 pnpm build             # Known Windows standalone symlink EPERM risk
-pnpm test              # ✅ 507/507 unit, 0/51 integration (DB offline), 44 skipped (Phase 2 Slice 3 verified)
+pnpm test              # ✅ 583+ unit, 0/51 integration (DB offline), 44 skipped (Phase 2 Slice 4 verified)
 ```
 
 ---
@@ -101,7 +103,7 @@ Prepared, not applied: `20260717000000_baseline_production_schema` and `20260717
 
 ## Último commit estable
 
-`ef299b0` — Refactor code structure for improved readability and maintainability; remove redundant sections and optimize performance.
+`be2f8fe` — docs: add ADR-008, update status for generated forms
 
 ## Próxima tarea concreta
 

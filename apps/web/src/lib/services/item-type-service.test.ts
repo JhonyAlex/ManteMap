@@ -47,7 +47,7 @@ describe('item type service access boundaries', () => {
   it('returns 404 for an item type from another project', async () => {
     vi.mocked(repository.findItemTypeById).mockResolvedValue(null);
     await expect(getItemType('project-1', 'type-from-project-2', 'member-1')).rejects.toBeInstanceOf(NotFoundError);
-    expect(repository.findItemTypeById).toHaveBeenCalledWith('project-1', 'type-from-project-2');
+    expect(repository.findItemTypeById).toHaveBeenCalledWith('project-1', 'type-from-project-2', expect.any(Object));
   });
 
   it('requires owner access for mutations, including ADMIN users', async () => {
@@ -77,5 +77,29 @@ describe('item type service lifecycle', () => {
     const result = await archiveItemType('project-1', 'type-1', 'owner-1');
     expect(result.itemType.status).toBe('ARCHIVED');
     await expect(archiveItemType('project-1', 'type-1', 'owner-1')).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe('item type service dynamic field and status inclusion', () => {
+  it('getItemType includes active dynamicFields and statuses ordered by order', async () => {
+    vi.mocked(repository.findItemTypeById).mockResolvedValue(active as never);
+    await getItemType('project-1', 'type-1', 'member-1');
+    expect(repository.findItemTypeById).toHaveBeenCalledWith(
+      'project-1',
+      'type-1',
+      {
+        dynamicFields: { where: { active: true }, orderBy: { order: 'asc' } },
+        statuses: { where: { active: true }, orderBy: { order: 'asc' } },
+      },
+    );
+  });
+
+  it('listItemTypes does NOT include dynamicFields or statuses (N+1 prevention)', async () => {
+    vi.mocked(repository.findItemTypesByProject).mockResolvedValue([active] as never);
+    await listItemTypes('project-1', 'member-1');
+    expect(repository.findItemTypesByProject).toHaveBeenCalledWith('project-1');
+    // No include passed
+    const callArgs = vi.mocked(repository.findItemTypesByProject).mock.calls[0];
+    expect(callArgs.length).toBe(1); // only projectId, no include
   });
 });

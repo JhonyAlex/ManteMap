@@ -134,3 +134,11 @@ export interface Location {
 
 /** Tipo de ubicación */
 export type LocationType = 'CENTER' | 'BUILDING' | 'FLOOR' | 'AREA' | 'SUBAREA';
+
+/** Column definition derived from a DynamicField for list table rendering. */
+export interface ItemColumn {
+  key: string;
+  label: string;
+  type: DynamicFieldType;
+  order: number;
+}

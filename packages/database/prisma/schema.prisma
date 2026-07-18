@@ -33,6 +33,7 @@ model User {
   sessions       Session[]
   projects       ProjectMember[]
   ownedProjects  Project[]
+  uploadedDocs   DocumentVersion[]
 
   @@map("users")
 }
@@ -109,6 +110,7 @@ model Project {
   owner   User             @relation(fields: [ownerId], references: [id])
   members ProjectMember[]
   itemTypes ItemType[]
+  events    Event[]
 
   @@index([ownerId])
   @@index([status])
@@ -147,12 +149,129 @@ model ItemType {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dynamicFields DynamicField[]
+  statuses      Status[]
+  items         Item[]
 
   @@unique([projectId, slug])
   @@index([projectId, status])
   @@index([projectId, name])
   @@map("item_types")
+}
+
+enum DynamicFieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  DECIMAL
+  CURRENCY
+  BOOLEAN
+  DATE
+  DATETIME
+  SELECT
+  MULTI_SELECT
+  URL
+  EMAIL
+  PHONE
+  FILE
+  IMAGE
+  ITEM_RELATION
+  LOCATION_RELATION
+  USER_RELATION
+}
+
+model DynamicField {
+  id           String           @id @default(cuid())
+  itemTypeId   String
+  name         String
+  key          String
+  type         DynamicFieldType
+  description  String?
+  required     Boolean          @default(false)
+  defaultValue Json?
+  order        Int              @default(0)
+  visible      Boolean          @default(true)
+  active       Boolean          @default(true)
+  options      Json?
+  unit         String?
+  validation   Json?
+  showInList   Boolean          @default(false)
+  showInSearch Boolean          @default(false)
+  helpText     String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  itemType ItemType @relation(fields: [itemTypeId], references: [id], onDelete: Cascade)
+
+  itemFieldValues ItemFieldValue[]
+
+  @@unique([itemTypeId, key])
+  @@index([itemTypeId, order])
+  @@map("dynamic_fields")
+}
+
+model Status {
+  id          String   @id @default(cuid())
+  itemTypeId  String
+  name        String
+  key         String
+  color       String
+  icon        String?
+  description String?
+  order       Int      @default(0)
+  isDefault   Boolean  @default(false)
+  active      Boolean  @default(true)
+  isFinal     Boolean  @default(false)
+  isBlocking  Boolean  @default(false)
+  isIncident  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  itemType ItemType @relation(fields: [itemTypeId], references: [id], onDelete: Cascade)
+  items    Item[]
+
+  @@unique([itemTypeId, key])
+  @@index([itemTypeId, order])
+  @@map("statuses")
+}
+
+model Item {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  itemTypeId  String
+  statusId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  itemType    ItemType       @relation(fields: [itemTypeId], references: [id], onDelete: Cascade)
+  status      Status?        @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  fieldValues ItemFieldValue[]
+  documents   Document[]
+  events      Event[]
+
+  @@unique([itemTypeId, slug])
+  @@index([itemTypeId])
+  @@index([statusId])
+  @@map("items")
+}
+
+model ItemFieldValue {
+  id              String   @id @default(cuid())
+  itemId          String
+  dynamicFieldId  String
+  value           Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  item         Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  dynamicField DynamicField @relation(fields: [dynamicFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, dynamicFieldId])
+  @@index([itemId])
+  @@index([dynamicFieldId])
+  @@map("item_field_values")
 }
 
 enum ItemTypeStatus {
@@ -165,4 +284,75 @@ enum ProjectRole {
   MANAGER
   MEMBER
   VIEWER
+}
+
+// -------------------------------------------
+// Document Management
+// -------------------------------------------
+
+model Document {
+  id               String           @id @default(cuid())
+  itemId           String
+  name             String
+  mimeType         String
+  sizeBytes        Int
+  expiresAt        DateTime?
+  currentVersionId String?          @unique
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  item           Item             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  currentVersion DocumentVersion? @relation("DocumentCurrentVersion", fields: [currentVersionId], references: [id])
+  versions       DocumentVersion[] @relation("DocumentVersions")
+
+  @@index([itemId])
+  @@index([expiresAt])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     Int
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+
+  document       Document @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  currentForDoc  Document? @relation("DocumentCurrentVersion")
+  user           User     @relation(fields: [uploadedBy], references: [id])
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+// -------------------------------------------
+// Events & Calendar
+// -------------------------------------------
+
+model Event {
+  id          String   @id @default(cuid())
+  projectId   String
+  itemId      String?
+  title       String
+  description String?
+  startAt     DateTime @db.Timestamptz
+  endAt       DateTime @db.Timestamptz
+  allDay      Boolean  @default(false)
+  rrule       String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  item    Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, startAt])
+  @@index([projectId, endAt])
+  @@index([itemId])
+  @@map("events")
 }
