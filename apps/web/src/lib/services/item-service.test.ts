@@ -26,6 +26,9 @@ vi.mock('@/lib/services/project-access-service', () => ({
   requireProjectMember: vi.fn(),
   requireProjectOwner: vi.fn(),
 }));
+vi.mock('@/lib/services/alert-service', () => ({
+  generateAlert: vi.fn(),
+}));
 
 import {
   createItem,
@@ -39,6 +42,7 @@ import * as repository from '@/lib/repositories/item-repository';
 import * as dynamicFieldRepository from '@/lib/repositories/dynamic-field-repository';
 import * as statusRepository from '@/lib/repositories/status-repository';
 import * as access from '@/lib/services/project-access-service';
+import * as alertService from '@/lib/services/alert-service';
 
 // ---------------------------------------------------------------------------
 // Fixtures — valid CUIDs for Zod validation
@@ -523,5 +527,105 @@ describe('item service transitionStatus', () => {
     await expect(
       transitionStatus(PROJECT_ID, 'clitem999xxxxxxxxxxxxxxxx', STATUS_ID_2, OWNER_ID)
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('generates a critical alert when transitioning to an incident status', async () => {
+    const incidentStatus = {
+      ...defaultStatus,
+      id: 'clstatINCxxxxxxxxxxxxxxxx',
+      name: 'Incident',
+      isIncident: true,
+      isBlocking: false,
+      isFinal: false,
+    };
+    vi.mocked(repository.findItemByProjectAndId).mockResolvedValue({ ...item, statusId: STATUS_ID } as never);
+    vi.mocked(statusRepository.getStatusById).mockResolvedValue(incidentStatus as never);
+    vi.mocked(repository.updateItem).mockResolvedValue({ ...item, statusId: incidentStatus.id } as never);
+    vi.mocked(alertService.generateAlert).mockResolvedValue({} as never);
+
+    await transitionStatus(PROJECT_ID, ITEM_ID, incidentStatus.id, OWNER_ID);
+
+    expect(alertService.generateAlert).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.objectContaining({
+        alertType: 'STATUS_INCIDENT',
+        severity: 'CRITICAL',
+        sourceType: 'item',
+        sourceId: ITEM_ID,
+      })
+    );
+  });
+
+  it('generates a warning alert when transitioning to a blocking status', async () => {
+    const blockingStatus = {
+      ...defaultStatus,
+      id: 'clstatBLKxxxxxxxxxxxxxxxx',
+      name: 'Blocked',
+      isIncident: false,
+      isBlocking: true,
+      isFinal: false,
+    };
+    vi.mocked(repository.findItemByProjectAndId).mockResolvedValue({ ...item, statusId: STATUS_ID } as never);
+    vi.mocked(statusRepository.getStatusById).mockResolvedValue(blockingStatus as never);
+    vi.mocked(repository.updateItem).mockResolvedValue({ ...item, statusId: blockingStatus.id } as never);
+    vi.mocked(alertService.generateAlert).mockResolvedValue({} as never);
+
+    await transitionStatus(PROJECT_ID, ITEM_ID, blockingStatus.id, OWNER_ID);
+
+    expect(alertService.generateAlert).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.objectContaining({
+        alertType: 'STATUS_BLOCKING',
+        severity: 'WARNING',
+        sourceType: 'item',
+        sourceId: ITEM_ID,
+      })
+    );
+  });
+
+  it('generates an info alert when transitioning to a final status', async () => {
+    const finalStatusTarget = {
+      ...defaultStatus,
+      id: 'clstatFINxxxxxxxxxxxxxxxx',
+      name: 'Completed',
+      isIncident: false,
+      isBlocking: false,
+      isFinal: true,
+    };
+    vi.mocked(repository.findItemByProjectAndId).mockResolvedValue({ ...item, statusId: STATUS_ID } as never);
+    // First call: target status (final); second call: current status (not final)
+    vi.mocked(statusRepository.getStatusById)
+      .mockResolvedValueOnce(finalStatusTarget as never)
+      .mockResolvedValueOnce({ ...defaultStatus, isFinal: false } as never);
+    vi.mocked(repository.updateItem).mockResolvedValue({ ...item, statusId: finalStatusTarget.id } as never);
+    vi.mocked(alertService.generateAlert).mockResolvedValue({} as never);
+
+    await transitionStatus(PROJECT_ID, ITEM_ID, finalStatusTarget.id, OWNER_ID);
+
+    expect(alertService.generateAlert).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.objectContaining({
+        alertType: 'STATUS_FINAL',
+        severity: 'INFO',
+        sourceType: 'item',
+        sourceId: ITEM_ID,
+      })
+    );
+  });
+
+  it('does not generate alert for a normal status transition', async () => {
+    vi.mocked(repository.findItemByProjectAndId).mockResolvedValue({ ...item, statusId: STATUS_ID } as never);
+    vi.mocked(statusRepository.getStatusById).mockResolvedValue({
+      ...defaultStatus,
+      id: STATUS_ID_2,
+      isIncident: false,
+      isBlocking: false,
+      isFinal: false,
+    } as never);
+    vi.mocked(repository.updateItem).mockResolvedValue({ ...item, statusId: STATUS_ID_2 } as never);
+
+    await transitionStatus(PROJECT_ID, ITEM_ID, STATUS_ID_2, OWNER_ID);
+
+    expect(alertService.generateAlert).not.toHaveBeenCalled();
   });
 });

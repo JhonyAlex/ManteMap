@@ -41,8 +41,10 @@ export interface ItemSummary {
   slug: string;
   itemTypeId: string;
   statusId: string | null;
+  locationId: string | null;
   createdAt: string;
   updatedAt: string;
+  location?: { id: string; name: string; level: number } | null;
 }
 
 /** Status embedded in item detail */
@@ -74,6 +76,7 @@ export interface FieldValueSnapshot {
 export interface ItemDetail extends ItemSummary {
   status?: ItemStatusSnapshot | null;
   itemType?: { id: string; name: string; slug: string };
+  location?: { id: string; name: string; level: number } | null;
   fieldValues?: FieldValueSnapshot[];
 }
 
@@ -177,6 +180,7 @@ export function useCreateItem(projectId: string) {
       name: string;
       itemTypeId: string;
       statusId?: string;
+      locationId?: string;
       fieldValues?: Array<{ dynamicFieldId: string; value: unknown }>;
     }) =>
       mutateJson<ItemSummary>(
@@ -202,6 +206,7 @@ export function useUpdateItem(projectId: string, itemId: string) {
     mutationFn: (data: {
       name?: string;
       statusId?: string;
+      locationId?: string | null;
       fieldValues?: Array<{ dynamicFieldId: string; value: unknown }>;
     }) =>
       mutateJson<ItemSummary>(

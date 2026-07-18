@@ -116,3 +116,21 @@ export async function deleteEvent(
     where: { id: eventId },
   });
 }
+
+/**
+ * Find events starting on or before the given date.
+ * Used by the alert scan to find upcoming events.
+ */
+export async function findUpcomingEvents(
+  projectId: string,
+  beforeDate: Date,
+  client: PrismaClient = prisma
+): Promise<Event[]> {
+  return client.event.findMany({
+    where: {
+      projectId,
+      startAt: { lte: beforeDate },
+    },
+    orderBy: { startAt: 'asc' },
+  });
+}

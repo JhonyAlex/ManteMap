@@ -19,6 +19,14 @@ vi.mock('@/lib/storage', () => ({
 vi.mock('@/lib/services/project-access-service', () => ({
   requireProjectMember: vi.fn(),
 }));
+vi.mock('@/lib/services/alert-service', () => ({
+  generateAlert: vi.fn(),
+  mapDaysToSeverity: vi.fn((days: number) => {
+    if (days <= 1) return 'CRITICAL';
+    if (days <= 14) return 'WARNING';
+    return 'INFO';
+  }),
+}));
 
 import {
   uploadDocument,
@@ -32,6 +40,7 @@ import {
 import * as repository from '@/lib/repositories/document-repository';
 import * as storage from '@/lib/storage';
 import * as access from '@/lib/services/project-access-service';
+import * as alertService from '@/lib/services/alert-service';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -364,5 +373,77 @@ describe('document service updateDocumentMetadata', () => {
     await expect(
       updateDocumentMetadata(PROJECT_ID, ITEM_ID, DOC_ID, { name: 'Updated' }, USER_ID)
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('generates alert when expiresAt is set to a new date', async () => {
+    const futureDate = new Date(Date.now() + 7 * 86400000).toISOString();
+    vi.mocked(repository.findDocumentById).mockResolvedValue(document);
+    vi.mocked(repository.updateDocument).mockResolvedValue({
+      ...document,
+      expiresAt: new Date(futureDate),
+    });
+    vi.mocked(alertService.generateAlert).mockResolvedValue({} as never);
+
+    await updateDocumentMetadata(
+      PROJECT_ID,
+      ITEM_ID,
+      DOC_ID,
+      { expiresAt: futureDate },
+      USER_ID
+    );
+
+    expect(alertService.generateAlert).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.objectContaining({
+        alertType: 'DOCUMENT_EXPIRING',
+        sourceType: 'document',
+        sourceId: DOC_ID,
+      })
+    );
+  });
+
+  it('generates alert when expiresAt is cleared to null', async () => {
+    const docWithExpiry = { ...document, expiresAt: new Date('2026-08-01') };
+    vi.mocked(repository.findDocumentById).mockResolvedValue(docWithExpiry);
+    vi.mocked(repository.updateDocument).mockResolvedValue({
+      ...docWithExpiry,
+      expiresAt: null,
+    });
+    vi.mocked(alertService.generateAlert).mockResolvedValue({} as never);
+
+    await updateDocumentMetadata(
+      PROJECT_ID,
+      ITEM_ID,
+      DOC_ID,
+      { expiresAt: null },
+      USER_ID
+    );
+
+    expect(alertService.generateAlert).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.objectContaining({
+        alertType: 'DOCUMENT_EXPIRING',
+        sourceType: 'document',
+        sourceId: DOC_ID,
+      })
+    );
+  });
+
+  it('does not generate alert when only name changes', async () => {
+    vi.mocked(repository.findDocumentById).mockResolvedValue(document);
+    vi.mocked(repository.updateDocument).mockResolvedValue({
+      ...document,
+      name: 'Updated Manual.pdf',
+    });
+
+    await updateDocumentMetadata(
+      PROJECT_ID,
+      ITEM_ID,
+      DOC_ID,
+      { name: 'Updated Manual.pdf' },
+      USER_ID
+    );
+
+    expect(alertService.generateAlert).not.toHaveBeenCalled();
   });
 });

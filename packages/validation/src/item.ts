@@ -40,6 +40,7 @@ export const createItemSchema = z.object({
   slug: slugSchema.optional(),
   itemTypeId: z.string().cuid(),
   statusId: z.string().cuid().optional(),
+  locationId: z.string().cuid().optional(),
   fieldValues: fieldValuesSchema.optional(),
 });
 
@@ -53,6 +54,7 @@ export const updateItemSchema = z
   .object({
     name: nameSchema.optional(),
     statusId: z.string().cuid().optional(),
+    locationId: z.string().cuid().nullable().optional(),
     fieldValues: fieldValuesSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {

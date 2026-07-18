@@ -121,6 +121,7 @@ describe('createItem', () => {
         slug: 'industrial-pump-a',
         itemTypeId: 'type-1',
         statusId: 'status-1',
+        locationId: null,
       },
     });
     expect(result).toEqual(activeItem);
@@ -237,7 +238,7 @@ describe('findItemsByProject', () => {
       orderBy: { createdAt: 'desc' },
       skip: 0,
       take: 20,
-      include: undefined,
+      include: { location: { select: { id: true, name: true, level: true } } },
     });
     expect(result).toHaveLength(2);
   });
@@ -257,7 +258,7 @@ describe('findItemsByProject', () => {
       orderBy: { createdAt: 'desc' },
       skip: 1,
       take: 1,
-      include: undefined,
+      include: { location: { select: { id: true, name: true, level: true } } },
     });
     expect(result).toHaveLength(1);
   });
@@ -276,7 +277,7 @@ describe('findItemsByProject', () => {
       orderBy: { createdAt: 'desc' },
       skip: 0,
       take: 20,
-      include: undefined,
+      include: { location: { select: { id: true, name: true, level: true } } },
     });
     expect(result).toHaveLength(1);
   });
@@ -298,7 +299,7 @@ describe('findItemsByProject', () => {
       orderBy: { createdAt: 'desc' },
       skip: 0,
       take: 20,
-      include: undefined,
+      include: { location: { select: { id: true, name: true, level: true } } },
     });
     expect(result).toHaveLength(1);
   });

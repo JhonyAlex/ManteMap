@@ -117,3 +117,21 @@ export async function findVersionsByDocument(
     orderBy: { version: 'desc' },
   });
 }
+
+/**
+ * Find documents with expiresAt on or before the given date.
+ * Used by the alert scan to find expiring documents.
+ */
+export async function findExpiringDocuments(
+  projectId: string,
+  beforeDate: Date,
+  client: PrismaClient = prisma
+): Promise<Document[]> {
+  return client.document.findMany({
+    where: {
+      item: { itemType: { projectId } },
+      expiresAt: { lte: beforeDate, not: null },
+    },
+    orderBy: { expiresAt: 'asc' },
+  });
+}

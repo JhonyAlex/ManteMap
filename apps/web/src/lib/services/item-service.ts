@@ -18,6 +18,7 @@ import {
 import { listFieldsByItemType } from '@/lib/repositories/dynamic-field-repository';
 import { getDefaultStatus, getStatusById } from '@/lib/repositories/status-repository';
 import { requireProjectMember, requireProjectOwner } from '@/lib/services/project-access-service';
+import { generateAlert } from '@/lib/services/alert-service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -101,6 +102,7 @@ export async function createItem(
     slug,
     itemTypeId: parsed.itemTypeId,
     statusId,
+    locationId: parsed.locationId,
   });
 
   // Create field values if provided
@@ -157,6 +159,7 @@ export async function updateItem(
   const updated = await updateItemRepo(projectId, itemId, existing.itemTypeId as string, {
     name: parsed.name,
     statusId: parsed.statusId,
+    locationId: parsed.locationId,
   });
 
   // Update field values if provided
@@ -234,5 +237,39 @@ export async function transitionStatus(
   }
 
   const updated = await updateItemRepo(projectId, itemId, itemTypeId, { statusId });
+
+  // Fire-and-forget: generate alert for incident/blocking/final status transitions
+  if (targetStatus.isIncident) {
+    void generateAlert(projectId, {
+      alertType: 'STATUS_INCIDENT',
+      severity: 'CRITICAL',
+      sourceType: 'item',
+      sourceId: itemId,
+      title: `Item "${existingItem.name}" moved to incident status "${targetStatus.name}"`,
+      message: `Status transitioned to incident. Immediate attention required.`,
+      metadata: { statusName: targetStatus.name, statusId: targetStatus.id },
+    });
+  } else if (targetStatus.isBlocking) {
+    void generateAlert(projectId, {
+      alertType: 'STATUS_BLOCKING',
+      severity: 'WARNING',
+      sourceType: 'item',
+      sourceId: itemId,
+      title: `Item "${existingItem.name}" moved to blocking status "${targetStatus.name}"`,
+      message: `Status transitioned to blocking. Workflow may be impacted.`,
+      metadata: { statusName: targetStatus.name, statusId: targetStatus.id },
+    });
+  } else if (targetStatus.isFinal) {
+    void generateAlert(projectId, {
+      alertType: 'STATUS_FINAL',
+      severity: 'INFO',
+      sourceType: 'item',
+      sourceId: itemId,
+      title: `Item "${existingItem.name}" reached final status "${targetStatus.name}"`,
+      message: `Item has reached a terminal status.`,
+      metadata: { statusName: targetStatus.name, statusId: targetStatus.id },
+    });
+  }
+
   return { item: updated };
 }

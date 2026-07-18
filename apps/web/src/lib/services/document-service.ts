@@ -12,6 +12,8 @@ import {
 } from '@/lib/repositories/document-repository';
 import { getStorageDriver } from '@/lib/storage';
 import { requireProjectMember } from '@/lib/services/project-access-service';
+import { generateAlert } from '@/lib/services/alert-service';
+import { mapDaysToSeverity } from '@/lib/services/alert-service';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -209,5 +211,29 @@ export async function updateDocumentMetadata(
   }
 
   const updated = await updateDocument(documentId, updateData);
+
+  // Fire-and-forget: generate alert when expiresAt changes
+  if (input.expiresAt !== undefined) {
+    const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
+    const days = expiresAt
+      ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000))
+      : 0;
+    const severity = expiresAt ? mapDaysToSeverity(days) : 'INFO';
+
+    void generateAlert(projectId, {
+      alertType: 'DOCUMENT_EXPIRING',
+      severity,
+      sourceType: 'document',
+      sourceId: documentId,
+      title: expiresAt
+        ? `Document "${document.name}" expires in ${days} day${days !== 1 ? 's' : ''}`
+        : `Document "${document.name}" expiration cleared`,
+      message: expiresAt
+        ? `This document expires on ${expiresAt.toISOString().split('T')[0]}`
+        : `Expiration date has been removed.`,
+      metadata: { daysUntilExpiry: days },
+    });
+  }
+
   return { document: updated };
 }

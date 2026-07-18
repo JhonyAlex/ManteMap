@@ -29,16 +29,19 @@ export type CreateItemData = {
   slug: string;
   itemTypeId: string;
   statusId?: string | null;
+  locationId?: string | null;
 };
 
 export type UpdateItemData = {
   name?: string;
   statusId?: string | null;
+  locationId?: string | null;
 };
 
 export type ListItemsFilters = {
   itemTypeId: string;
   statusId?: string;
+  locationId?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -60,6 +63,7 @@ export async function createItem(
       slug: data.slug,
       itemTypeId: data.itemTypeId,
       statusId: data.statusId ?? null,
+      locationId: data.locationId ?? null,
     },
   });
 }
@@ -93,6 +97,10 @@ export async function findItemsByProject(
     where.statusId = filters.statusId;
   }
 
+  if (filters.locationId) {
+    where.locationId = filters.locationId;
+  }
+
   if (filters.search) {
     where.name = { contains: filters.search, mode: 'insensitive' };
   }
@@ -105,7 +113,9 @@ export async function findItemsByProject(
     orderBy: { createdAt: 'desc' },
     skip: (page - 1) * pageSize,
     take: pageSize,
-    include: undefined,
+    include: {
+      location: { select: { id: true, name: true, level: true } },
+    },
   });
 }
 
@@ -206,12 +216,16 @@ export async function findItemByProjectAndId(
   itemId: string,
   include?: Prisma.ItemInclude,
   client: PrismaClient = prisma
-): Promise<(Item & { fieldValues?: ItemFieldValue[]; status?: unknown; itemType?: unknown }) | null> {
+): Promise<(Item & { fieldValues?: ItemFieldValue[]; status?: unknown; itemType?: unknown; location?: unknown }) | null> {
+  const defaultInclude: Prisma.ItemInclude = {
+    location: { select: { id: true, name: true, level: true } },
+  };
+
   return client.item.findFirst({
     where: {
       id: itemId,
       itemType: { projectId },
     },
-    include: include ?? undefined,
+    include: include ?? defaultInclude,
   });
 }
