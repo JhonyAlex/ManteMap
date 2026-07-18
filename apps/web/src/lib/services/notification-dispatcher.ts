@@ -1,6 +1,5 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, UserChannelConfig, PrismaClient } from '@mantemap/database';
 import type { ChannelRegistry } from './channels/channel-registry';
-import type { UserChannelConfig, PrismaClient } from '@mantemap/database';
 
 // ---------------------------------------------------------------------------
 // Types

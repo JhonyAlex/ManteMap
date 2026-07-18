@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@mantemap/database';
 import type { DeliveryResult, NotificationChannel } from './types';
 import { formatAlertMessage } from '../notification-template-service';
 

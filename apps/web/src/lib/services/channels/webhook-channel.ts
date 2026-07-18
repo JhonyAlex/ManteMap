@@ -1,5 +1,5 @@
 import { createHmac } from 'crypto';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@mantemap/database';
 import type { DeliveryResult, NotificationChannel } from './types';
 
 /**

@@ -10,7 +10,7 @@ import { EmailChannel } from '@/lib/services/channels/email-channel';
 import { SlackChannel } from '@/lib/services/channels/slack-channel';
 import { TeamsChannel } from '@/lib/services/channels/teams-channel';
 import { TelegramChannel } from '@/lib/services/channels/telegram-channel';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@mantemap/database';
 import type { NotificationChannel } from '@/lib/services/channels/types';
 import type { ApiResponse } from '@mantemap/shared';
 
