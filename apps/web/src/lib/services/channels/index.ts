@@ -5,6 +5,7 @@ import { EmailChannel } from './email-channel';
 import { SlackChannel } from './slack-channel';
 import { TeamsChannel } from './teams-channel';
 import { TelegramChannel } from './telegram-channel';
+import { WebhookChannel } from './webhook-channel';
 import {
   getUserChannelConfig,
 } from '@/lib/repositories/channel-config-repository';
@@ -61,6 +62,7 @@ function buildRegistry(): ChannelRegistry {
   registry.register(new SlackChannel());
   registry.register(new TeamsChannel());
   registry.register(new TelegramChannel());
+  registry.register(new WebhookChannel());
   return registry;
 }
 

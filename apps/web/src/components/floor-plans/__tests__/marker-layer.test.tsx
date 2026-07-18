@@ -45,9 +45,9 @@ vi.mock('react-konva', () => ({
 }));
 
 const mockMarkers: MarkerSummary[] = [
-  { id: 'm1', floorPlanId: 'fp1', itemId: 'item-1', x: 0.5, y: 0.3, label: 'Room 101', color: '#ff0000' },
-  { id: 'm2', floorPlanId: 'fp1', itemId: 'item-2', x: 0.7, y: 0.6, label: 'Room 102', color: '#00ff00' },
-  { id: 'm3', floorPlanId: 'fp1', itemId: null, x: 0.2, y: 0.8, label: 'Zone A', color: '#0000ff' },
+  { id: 'm1', floorPlanId: 'fp1', itemId: 'item-1', x: 0.5, y: 0.3, label: 'Room 101', color: '#ff0000', layer: 'safety' },
+  { id: 'm2', floorPlanId: 'fp1', itemId: 'item-2', x: 0.7, y: 0.6, label: 'Room 102', color: '#00ff00', layer: 'equipment' },
+  { id: 'm3', floorPlanId: 'fp1', itemId: null, x: 0.2, y: 0.8, label: 'Zone A', color: '#0000ff', layer: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -87,6 +87,54 @@ describe('filterMarkers', () => {
 
   it('is case-insensitive for search', () => {
     const result = filterMarkers(mockMarkers, { search: 'room' });
+    expect(result).toHaveLength(2);
+  });
+
+  it('shows all markers when no layers are specified in filter', () => {
+    const result = filterMarkers(mockMarkers, { selectedLayers: [] });
+    expect(result).toHaveLength(3);
+  });
+
+  it('filters markers by selected layers', () => {
+    const result = filterMarkers(mockMarkers, { selectedLayers: ['safety'] });
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toBe('Room 101');
+  });
+
+  it('combines search and layer filters with AND logic', () => {
+    // safety=Room 101, equipment=Room 102 — both match "Room" search
+    const result = filterMarkers(mockMarkers, {
+      search: 'Room',
+      selectedLayers: ['safety'],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toBe('Room 101');
+  });
+
+  it('returns empty when selected layer has no matching markers', () => {
+    const result = filterMarkers(mockMarkers, { selectedLayers: ['hvac'] });
+    expect(result).toHaveLength(0);
+  });
+
+  it('uncategorized markers (null layer) are always visible when no layer filter applied', () => {
+    const result = filterMarkers(mockMarkers, { search: 'Zone' });
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toBe('Zone A');
+  });
+
+  it('hides uncategorized markers when specific layers are selected', () => {
+    const result = filterMarkers(mockMarkers, { selectedLayers: ['safety'] });
+    // Zone A has null layer, should not appear
+    const labels = result.map((m) => m.label);
+    expect(labels).not.toContain('Zone A');
+  });
+
+  it('combines hasItem and layer filters with AND logic', () => {
+    // safety=Room 101 (has item), but Zone A (null layer) has no item
+    const result = filterMarkers(mockMarkers, {
+      hasItem: true,
+      selectedLayers: ['safety', 'equipment'],
+    });
     expect(result).toHaveLength(2);
   });
 });

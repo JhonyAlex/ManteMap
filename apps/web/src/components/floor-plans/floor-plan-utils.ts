@@ -12,6 +12,22 @@
 import type { MarkerSummary } from '@/hooks/use-floor-plans';
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** A single 2D point used for polygon vertices. */
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** Result of polygon vertex validation. */
+export interface PolygonValidationResult {
+  valid: boolean;
+  error: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
@@ -71,11 +87,15 @@ export function clampZoom(zoom: number): number {
 export interface MarkerFilter {
   search?: string;
   hasItem?: boolean;
+  selectedLayers?: string[];
 }
 
 /**
- * Filter markers by search text and item presence.
+ * Filter markers by search text, item presence, and layer selection.
  * Search is case-insensitive label match. hasItem filters by itemId presence.
+ * selectedLayers filters by marker.layer field — only markers whose layer is
+ * in the selectedLayers array are shown. An empty or undefined selectedLayers
+ * means no layer filter is applied (show all).
  * Filters combine with AND logic.
  */
 export function filterMarkers(
@@ -92,6 +112,69 @@ export function filterMarkers(
       const markerHasItem = marker.itemId !== null;
       if (markerHasItem !== filter.hasItem) return false;
     }
+    if (filter.selectedLayers && filter.selectedLayers.length > 0) {
+      const markerLayer = marker.layer ?? null;
+      if (!markerLayer || !filter.selectedLayers.includes(markerLayer)) return false;
+    }
     return true;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Polygon vertex coordinate conversion
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert an array of normalized coordinate vertices (0–1) to pixel coordinates.
+ * Each vertex is scaled independently by image dimensions.
+ */
+export function normalizedVerticesToPixel(
+  vertices: Point[],
+  imageWidth: number,
+  imageHeight: number
+): Point[] {
+  return vertices.map((v) => normalizedToPixel(v.x, v.y, imageWidth, imageHeight));
+}
+
+/**
+ * Convert an array of pixel coordinate vertices back to normalized (0–1).
+ */
+export function pixelToNormalizedVertices(
+  vertices: Point[],
+  imageWidth: number,
+  imageHeight: number
+): Point[] {
+  return vertices.map((v) => pixelToNormalized(v.x, v.y, imageWidth, imageHeight));
+}
+
+// ---------------------------------------------------------------------------
+// Polygon validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate that polygon vertices form a valid shape.
+ * A polygon requires at least 3 vertices, each with numeric x and y.
+ */
+export function validatePolygonVertices(
+  vertices: Point[] | null | undefined
+): PolygonValidationResult {
+  if (!vertices || !Array.isArray(vertices)) {
+    return { valid: false, error: 'vertices array is required' };
+  }
+
+  if (vertices.length < 3) {
+    return { valid: false, error: `Polygon requires at least 3 vertices, got ${vertices.length}` };
+  }
+
+  for (let i = 0; i < vertices.length; i++) {
+    const v = vertices[i];
+    if (typeof v.x !== 'number' || typeof v.y !== 'number') {
+      return {
+        valid: false,
+        error: `Vertex at index ${i} must have numeric x and y properties`,
+      };
+    }
+  }
+
+  return { valid: true, error: null };
 }

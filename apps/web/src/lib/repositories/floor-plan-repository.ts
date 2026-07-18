@@ -30,6 +30,11 @@ export type CreateMarkerData = {
   label?: string;
   color?: string;
   itemId?: string;
+  type?: string;
+  points?: Array<{ x: number; y: number }>;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
 };
 
 export type UpdateMarkerData = {
@@ -38,6 +43,11 @@ export type UpdateMarkerData = {
   label?: string;
   color?: string;
   itemId?: string;
+  type?: string;
+  points?: Array<{ x: number; y: number }>;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -132,6 +142,11 @@ export async function createMarker(
       label: data.label,
       color: data.color,
       itemId: data.itemId,
+      type: data.type,
+      points: data.points as object | undefined,
+      fillColor: data.fillColor,
+      strokeColor: data.strokeColor,
+      strokeWidth: data.strokeWidth,
     },
   });
 }

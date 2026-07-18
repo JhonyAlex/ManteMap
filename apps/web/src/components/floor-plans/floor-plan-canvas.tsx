@@ -17,6 +17,8 @@ import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import type Konva from 'konva';
 import type { MarkerSummary } from '@/hooks/use-floor-plans';
 import { MarkerLayer } from './marker-layer';
+import { PolygonLayer } from './polygon-layer';
+import type { MarkerFilter } from './floor-plan-utils';
 import { clampZoom, ZOOM_STEP } from './floor-plan-utils';
 
 // ---------------------------------------------------------------------------
@@ -31,8 +33,11 @@ export interface FloorPlanCanvasProps {
   containerHeight: number;
   markers: MarkerSummary[];
   canDrag?: boolean;
+  filter?: MarkerFilter;
   onMarkerClick?: (markerId: string) => void;
   onMarkerDragEnd?: (markerId: string, normalizedX: number, normalizedY: number) => void;
+  onPolygonClick?: (markerId: string) => void;
+  onVertexDragEnd?: (markerId: string, vertexIndex: number, normalizedX: number, normalizedY: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,8 +52,11 @@ export function FloorPlanCanvas({
   containerHeight,
   markers,
   canDrag = false,
+  filter,
   onMarkerClick,
   onMarkerDragEnd,
+  onPolygonClick,
+  onVertexDragEnd,
 }: FloorPlanCanvasProps) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -150,8 +158,21 @@ export function FloorPlanCanvas({
           scaleX={fitScale}
           scaleY={fitScale}
           canDrag={canDrag}
+          filter={filter}
           onMarkerClick={onMarkerClick}
           onDragEnd={onMarkerDragEnd}
+        />
+
+        {/* Polygons layer */}
+        <PolygonLayer
+          markers={markers}
+          imageWidth={imageWidth * fitScale}
+          imageHeight={imageHeight * fitScale}
+          scaleX={fitScale}
+          scaleY={fitScale}
+          canDrag={canDrag}
+          onPolygonClick={onPolygonClick}
+          onVertexDragEnd={onVertexDragEnd}
         />
       </Stage>
     </div>

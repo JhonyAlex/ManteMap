@@ -215,21 +215,21 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 10 — Funciones avanzadas
+## Fase 10 — Funciones avanzadas ✅
 
 **Objetivo**: Funcionalidades extendidas.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Códigos QR | ⬜ Evaluar | QR imprimible por ítem |
-| Inspecciones móviles | ⬜ Evaluar | Escanear QR → ver ficha |
-| Webhooks | ⬜ Evaluar | Notificaciones a sistemas externos |
-| Polígonos en planos | ⬜ Evaluar | Dibujar zonas interactivas |
-| Capas | ⬜ Evaluar | Filtrar por capas temáticas |
-| Exportación PDF | ⬜ Evaluar | Fichas e informes en PDF |
-| OCR / IA documental | ⬜ Evaluar | Extracción automática de fechas |
+| Códigos QR | ✅ Completado | QR imprimible por ítem |
+| Inspecciones móviles | ✅ Completado | Escanear QR → ver ficha |
+| Webhooks | ✅ Completado | Notificaciones a sistemas externos |
+| Polígonos en planos | ✅ Completado | Dibujar zonas interactivas |
+| Capas | ✅ Completado | Filtrar por capas temáticas |
+| Exportación PDF | ✅ Completado | Fichas e informes en PDF |
+| OCR / IA documental | ⬜ Evaluar | Extracción automática de fechas (deferido a Fase 11) |
 
-**Dependencias**: Fase 8 completada.
+**Dependencias**: Fase 8 completada. **Phase 11 (SDD)**: 6 PRs, 4 slices, 62 tasks, ~268 tests. **Archivado**: 2026-07-18.
 
 ---
 
@@ -254,4 +254,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-18. Fases 0-9 completas vía SDD: Auth, ItemTypes, DynamicFields, Statuses, Items, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications, Dashboard & Reports, External Notifications (email/Slack/Teams/Telegram). ~2,003 tests. ADR-005 resuelto: migración `20260718150342_add_all_phase_models` generada. Próxima fase: Funciones avanzadas (Fase 10 — Phase 11).
+> **Última actualización**: 2026-07-18. Fases 0-9 completas vía SDD: Auth, ItemTypes, DynamicFields, Statuses, Items, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications, Dashboard & Reports, External Notifications (email/Slack/Teams/Telegram). Fase 10 completada: Advanced Features — QR Codes, Webhooks, Mobile Inspections, Polygons, PDF Export, Layers (6 PRs, 4 slices, 62 tasks, ~268 tests). ~2,112 tests. ADR-005 resuelto: migración `20260718150342_add_all_phase_models` generada. Próxima fase: OCR / Document AI (Fase 11 — Phase 12).

@@ -58,10 +58,11 @@ export function MarkerLayer({
   onMarkerClick,
   onDragEnd,
 }: MarkerLayerProps) {
-  // Apply filters
+  // Apply filters — only show POINT markers (polygons are handled by PolygonLayer)
   const visibleMarkers = useMemo(() => {
-    if (!filter) return markers;
-    return filterMarkers(markers, filter);
+    const pointMarkers = markers.filter((m) => !m.type || m.type === 'POINT');
+    if (!filter) return pointMarkers;
+    return filterMarkers(pointMarkers, filter);
   }, [markers, filter]);
 
   // Handle marker click

@@ -26,6 +26,7 @@ import {
 import { buildColumns } from './column-builder';
 import { renderCellValue } from './cell-renderer';
 import { useItems } from '@/hooks/use-items';
+import { QRSheet } from './qr-sheet';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -109,6 +110,11 @@ export function ItemList({
           value={search}
           onChange={handleSearchChange}
           className="h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <QRSheet
+          projectId={projectId}
+          itemIds={items?.map((item) => item.id) ?? []}
+          disabled={!items || items.length === 0}
         />
       </div>
 

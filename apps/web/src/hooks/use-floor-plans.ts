@@ -36,6 +36,12 @@ export interface MarkerSummary {
   y: number;
   label: string | null;
   color: string | null;
+  layer?: string | null;
+  type?: string | null;
+  points?: Array<{ x: number; y: number }> | null;
+  fillColor?: string | null;
+  strokeColor?: string | null;
+  strokeWidth?: number | null;
 }
 
 export interface CreateMarkerData {
@@ -44,6 +50,12 @@ export interface CreateMarkerData {
   label?: string;
   color?: string;
   itemId?: string;
+  layer?: string;
+  type?: string;
+  points?: Array<{ x: number; y: number }>;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
 }
 
 export interface UpdateMarkerData {
@@ -52,6 +64,12 @@ export interface UpdateMarkerData {
   label?: string;
   color?: string;
   itemId?: string;
+  layer?: string | null;
+  type?: string;
+  points?: Array<{ x: number; y: number }> | null;
+  fillColor?: string | null;
+  strokeColor?: string | null;
+  strokeWidth?: number | null;
 }
 
 // ---------------------------------------------------------------------------

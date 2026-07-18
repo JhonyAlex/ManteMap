@@ -36,6 +36,7 @@ model User {
   uploadedDocs   DocumentVersion[]
   notificationPreferences NotificationPreference[]
   channelConfigs          UserChannelConfig[]
+  inspections             Inspection[]
 
   @@map("users")
 }
@@ -116,6 +117,7 @@ model Project {
   events    Event[]
   alerts                Alert[]
   notificationPreferences NotificationPreference[]
+  webhookEndpoints         WebhookEndpoint[]
 
   @@index([ownerId])
   @@index([status])
@@ -259,6 +261,7 @@ model Item {
   events      Event[]
   markers     LocationMarker[]
   qrCode      ItemQRCode?
+  inspections Inspection[]
 
   @@unique([itemTypeId, slug])
   @@index([itemTypeId])
@@ -355,11 +358,16 @@ model LocationMarker {
   id          String   @id @default(cuid())
   floorPlanId String
   itemId      String?
-  x           Float    // Normalized 0-1
-  y           Float    // Normalized 0-1
+  x           Float    // Normalized 0-1 (used when type=POINT)
+  y           Float    // Normalized 0-1 (used when type=POINT)
   label       String?
   color       String?
   layer       String?  // e.g. "safety", "equipment", "hvac", "electrical"
+  type        String   @default("POINT")  // POINT | POLYGON
+  points      Json?     // [{x: number, y: number}, ...] for POLYGON, min 3 vertices
+  fillColor   String?   // hex color, optional alpha
+  strokeColor String?
+  strokeWidth Float?    @default(2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -511,6 +519,44 @@ model NotificationDelivery {
   @@index([userId])
   @@index([status])
   @@map("notification_deliveries")
+}
+
+model WebhookEndpoint {
+  id         String   @id @default(cuid())
+  projectId  String
+  name       String
+  url        String
+  secret     String?   // HMAC key — excluded from API responses
+  eventTypes String[]  // ["STATUS_INCIDENT", "DOCUMENT_EXPIRING", ...]
+  active     Boolean  @default(true)
+  retryCount Int      @default(3)
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("webhook_endpoints")
+}
+
+// -------------------------------------------
+// Mobile Inspections
+// -------------------------------------------
+
+model Inspection {
+  id        String   @id @default(cuid())
+  itemId    String
+  userId    String
+  statusId  String?
+  notes     String?
+  photoPath String?
+  createdAt DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([itemId])
+  @@index([userId])
+  @@map("inspections")
 }
 
 // -------------------------------------------

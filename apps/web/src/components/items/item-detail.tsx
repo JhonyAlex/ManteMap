@@ -38,6 +38,8 @@ import type { ItemDetail as ItemDetailType } from '@/hooks/use-items';
 import { DocumentList } from './documents/document-list';
 import { UploadDialog } from './documents/upload-dialog';
 import { QRCodeDisplay } from './qr-code-display';
+import { InspectionForm } from './inspection-form';
+import { ExportPDFButton } from './export-pdf-button';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -47,13 +49,15 @@ export interface ItemDetailProps {
   item: ItemDetailType;
   projectId: string;
   availableStatuses?: StatusOption[];
+  /** Current user ID for inspection logging. */
+  userId?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDetailProps) {
+export function ItemDetail({ item, projectId, availableStatuses = [], userId }: ItemDetailProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -70,11 +74,11 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
+      {/* Header — stacked on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{item.name}</h1>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {item.itemType && (
               <span className="text-sm text-muted-foreground">
                 {item.itemType.name}
@@ -83,7 +87,7 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
             {item.status ? (
               <Badge
                 style={{ backgroundColor: item.status.color }}
-                className="text-white"
+                className="text-white min-h-[24px]"
               >
                 {item.status.name}
               </Badge>
@@ -93,7 +97,7 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {availableStatuses.length > 0 && (
             <StatusTransition
               projectId={projectId}
@@ -104,19 +108,24 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
           )}
           <Link
             href={`/projects/${projectId}/items/${item.id}/edit`}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
           >
             Edit
           </Link>
           <button
             onClick={() => setQrOpen(true)}
-            className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             Show QR
           </button>
+          <ExportPDFButton
+            projectId={projectId}
+            itemId={item.id}
+            itemName={item.name}
+          />
           <button
             onClick={() => setDeleteOpen(true)}
-            className="inline-flex h-9 items-center justify-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
           >
             Delete
           </button>
@@ -146,7 +155,7 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
         ) : (
           <div className="divide-y">
             {item.fieldValues.map((fv) => (
-              <div key={fv.id} className="flex items-start justify-between px-4 py-3">
+              <div key={fv.id} className="flex items-start justify-between px-4 py-3 min-h-[44px]">
                 <span className="text-sm font-medium text-muted-foreground">
                   {fv.dynamicField?.name ?? fv.dynamicFieldId}
                 </span>
@@ -172,6 +181,33 @@ export function ItemDetail({ item, projectId, availableStatuses = [] }: ItemDeta
         </div>
         <DocumentList projectId={projectId} itemId={item.id} />
       </div>
+
+      {/* Inspection log section */}
+      {userId && (
+        <div className="rounded-lg border p-4">
+          <InspectionForm
+            projectId={projectId}
+            itemId={item.id}
+            userId={userId}
+            currentStatusId={item.statusId ?? undefined}
+            onSubmit={async (data) => {
+              const res = await fetch(`/api/projects/${projectId}/inspections`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  itemId: item.id,
+                  statusId: data.statusId,
+                  notes: data.notes,
+                  photoPath: data.photoPath,
+                }),
+              });
+              if (!res.ok) {
+                throw new Error('Failed to log inspection');
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* Upload dialog */}
       <UploadDialog

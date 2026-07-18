@@ -13,6 +13,7 @@
 
 import React, { useCallback } from 'react';
 import { MIN_ZOOM, MAX_ZOOM, ZOOM_STEP, clampZoom } from './floor-plan-utils';
+import { LayerToggleGroup } from './layer-toggle-group';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,6 +22,7 @@ import { MIN_ZOOM, MAX_ZOOM, ZOOM_STEP, clampZoom } from './floor-plan-utils';
 export interface FilterState {
   search?: string;
   hasItem?: boolean;
+  categories?: Record<string, boolean>;
 }
 
 // ---------------------------------------------------------------------------
@@ -33,6 +35,9 @@ export interface ViewerToolbarProps {
   onResetView: () => void;
   filter?: FilterState;
   onFilterChange?: (filter: FilterState) => void;
+  layers?: string[];
+  isDrawingMode?: boolean;
+  onToggleDrawingMode?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +50,9 @@ export function ViewerToolbar({
   onResetView,
   filter,
   onFilterChange,
+  layers = [],
+  isDrawingMode = false,
+  onToggleDrawingMode,
 }: ViewerToolbarProps) {
   const handleZoomIn = useCallback(() => {
     onZoomChange(clampZoom(zoom * (1 + ZOOM_STEP)));
@@ -57,6 +65,19 @@ export function ViewerToolbar({
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onFilterChange?.({ ...filter, search: e.target.value });
+    },
+    [filter, onFilterChange]
+  );
+
+  const handleLayerToggle = useCallback(
+    (layer: string) => {
+      if (!onFilterChange) return;
+      const currentCategories = filter?.categories ?? {};
+      const isEnabled = currentCategories[layer] ?? true;
+      onFilterChange({
+        ...filter,
+        categories: { ...currentCategories, [layer]: !isEnabled },
+      });
     },
     [filter, onFilterChange]
   );
@@ -98,7 +119,32 @@ export function ViewerToolbar({
         >
           Reset
         </button>
+
+        {/* Draw Polygon mode toggle */}
+        {onToggleDrawingMode && (
+          <button
+            type="button"
+            aria-label={isDrawingMode ? 'Cancel drawing' : 'Draw polygon'}
+            onClick={onToggleDrawingMode}
+            className={`ml-2 flex h-8 items-center justify-center rounded-md border px-2 text-sm ${
+              isDrawingMode
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'hover:bg-accent'
+            }`}
+          >
+            {isDrawingMode ? 'Cancel' : 'Draw Polygon'}
+          </button>
+        )}
       </div>
+
+      {/* Layer toggle group */}
+      {layers.length > 0 && onFilterChange && (
+        <LayerToggleGroup
+          layers={layers}
+          selectedLayers={Object.entries(filter?.categories ?? {}).filter(([, v]) => v).map(([k]) => k)}
+          onToggle={handleLayerToggle}
+        />
+      )}
 
       {/* Search filter (optional) */}
       {onFilterChange && (

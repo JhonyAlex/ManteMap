@@ -41,6 +41,20 @@ const markerLabelSchema = z
 
 const colorSchema = z.string().trim().max(20);
 
+const markerTypeSchema = z.enum(['POINT', 'POLYGON']).default('POINT');
+
+const pointSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+
+const pointsSchema = z.array(pointSchema);
+
+const polygonValidation = z
+  .array(pointSchema)
+  .min(3, 'Polygon requires at least 3 vertices')
+  .optional();
+
 // ---------------------------------------------------------------------------
 // createFloorPlanSchema
 // ---------------------------------------------------------------------------
@@ -74,13 +88,34 @@ export type UpdateFloorPlanInput = z.infer<typeof updateFloorPlanSchema>;
 // createMarkerSchema
 // ---------------------------------------------------------------------------
 
-export const createMarkerSchema = z.object({
-  x: coordinateSchema,
-  y: coordinateSchema,
-  label: markerLabelSchema.optional(),
-  color: colorSchema.optional(),
-  itemId: cuidSchema.optional(),
-});
+export const createMarkerSchema = z
+  .object({
+    x: coordinateSchema,
+    y: coordinateSchema,
+    label: markerLabelSchema.optional(),
+    color: colorSchema.optional(),
+    itemId: cuidSchema.optional(),
+    type: markerTypeSchema,
+    points: pointsSchema.optional(),
+    fillColor: colorSchema.optional(),
+    strokeColor: colorSchema.optional(),
+    strokeWidth: z.number().positive().optional(),
+  })
+  .refine(
+    (data) => {
+      // If type is POLYGON, points must be provided with ≥ 3 vertices
+      if (data.type === 'POLYGON') {
+        if (!data.points || data.points.length < 3) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: 'Polygon markers require points array with at least 3 vertices',
+      path: ['points'],
+    }
+  );
 
 export type CreateMarkerInput = z.infer<typeof createMarkerSchema>;
 
@@ -95,9 +130,29 @@ export const updateMarkerSchema = z
     label: markerLabelSchema.optional(),
     color: colorSchema.optional(),
     itemId: cuidSchema.optional(),
+    type: markerTypeSchema.optional(),
+    points: pointsSchema.optional(),
+    fillColor: colorSchema.optional(),
+    strokeColor: colorSchema.optional(),
+    strokeWidth: z.number().positive().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field must be provided for update',
-  });
+  })
+  .refine(
+    (data) => {
+      // If type is being changed to POLYGON, points must be valid
+      if (data.type === 'POLYGON' && data.points !== undefined) {
+        if (data.points.length < 3) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: 'Polygon markers require points array with at least 3 vertices',
+      path: ['points'],
+    }
+  );
 
 export type UpdateMarkerInput = z.infer<typeof updateMarkerSchema>;

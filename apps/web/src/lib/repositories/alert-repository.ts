@@ -258,7 +258,10 @@ export async function getMembersWithPreferences(
     userId: m.user.id,
     email: m.user.email,
     name: m.user.name,
-    preferences: m.user.notificationPreferences,
+    preferences: m.user.notificationPreferences.map((p) => ({
+      ...p,
+      webhook: false, // webhook preference is managed via UserChannelConfig, not NotificationPreference
+    })),
   }));
 }
 

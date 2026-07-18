@@ -191,7 +191,9 @@ export async function addMarker(
   const parsed = createMarkerSchema.parse(input);
 
   // Validate coordinates
-  validateCoordinates(parsed.x, parsed.y);
+  if (parsed.type !== 'POLYGON') {
+    validateCoordinates(parsed.x, parsed.y);
+  }
 
   const marker = await createMarkerRepo(floorPlanId, {
     x: parsed.x,
@@ -199,6 +201,11 @@ export async function addMarker(
     label: parsed.label,
     color: parsed.color,
     itemId: parsed.itemId,
+    type: parsed.type,
+    points: parsed.points,
+    fillColor: parsed.fillColor,
+    strokeColor: parsed.strokeColor,
+    strokeWidth: parsed.strokeWidth,
   });
 
   return { marker };

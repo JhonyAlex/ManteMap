@@ -14,7 +14,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type { MarkerSummary } from '@/hooks/use-floor-plans';
 import { clampZoom, MIN_ZOOM, ZOOM_STEP } from './floor-plan-utils';
@@ -65,6 +65,29 @@ export function FloorPlanViewer({
   const [zoom, setZoom] = useState(1);
   const [filter, setFilter] = useState<FilterState>({});
 
+  // Derive distinct layers from markers
+  const layers = useMemo(() => {
+    const layerSet = new Set<string>();
+    for (const marker of markers) {
+      if (marker.layer) layerSet.add(marker.layer);
+    }
+    return Array.from(layerSet).sort();
+  }, [markers]);
+
+  // Convert FilterState.categories to MarkerFilter.selectedLayers
+  const markerFilter = useMemo(() => {
+    const selectedLayers = filter.categories
+      ? Object.entries(filter.categories)
+          .filter(([, enabled]) => enabled)
+          .map(([layer]) => layer)
+      : undefined;
+
+    return {
+      search: filter.search,
+      selectedLayers,
+    };
+  }, [filter]);
+
   // Observe container size changes
   useEffect(() => {
     const container = containerRef.current;
@@ -106,6 +129,7 @@ export function FloorPlanViewer({
         onResetView={handleResetView}
         filter={filter}
         onFilterChange={setFilter}
+        layers={layers}
       />
 
       {/* Canvas container — fills remaining space */}
@@ -119,6 +143,7 @@ export function FloorPlanViewer({
             containerHeight={dimensions.height}
             markers={markers}
             canDrag={canDrag}
+            filter={markerFilter}
             onMarkerClick={onMarkerClick}
             onMarkerDragEnd={onMarkerDragEnd}
           />

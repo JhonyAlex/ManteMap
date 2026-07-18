@@ -317,6 +317,148 @@ describe('updateMarkerSchema', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Polygon marker validation — createMarkerSchema
+// ---------------------------------------------------------------------------
+
+describe('createMarkerSchema — polygon fields', () => {
+  it('accepts POINT type marker without points', () => {
+    const result = createMarkerSchema.safeParse({
+      x: 0.5,
+      y: 0.5,
+      type: 'POINT',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe('POINT');
+    }
+  });
+
+  it('defaults type to POINT when not specified', () => {
+    const result = createMarkerSchema.safeParse({ x: 0.5, y: 0.5 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe('POINT');
+    }
+  });
+
+  it('accepts POLYGON type with valid points (4 vertices)', () => {
+    const result = createMarkerSchema.safeParse({
+      x: 0.5,
+      y: 0.5,
+      type: 'POLYGON',
+      points: [
+        { x: 0.2, y: 0.2 },
+        { x: 0.5, y: 0.2 },
+        { x: 0.5, y: 0.5 },
+        { x: 0.2, y: 0.5 },
+      ],
+      fillColor: '#00ff0040',
+      strokeColor: '#00ff00',
+      strokeWidth: 3,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe('POLYGON');
+      expect(result.data.points).toHaveLength(4);
+      expect(result.data.fillColor).toBe('#00ff0040');
+      expect(result.data.strokeColor).toBe('#00ff00');
+      expect(result.data.strokeWidth).toBe(3);
+    }
+  });
+
+  it('accepts POLYGON with exactly 3 vertices', () => {
+    const result = createMarkerSchema.safeParse({
+      x: 0.5,
+      y: 0.5,
+      type: 'POLYGON',
+      points: [
+        { x: 0, y: 0 },
+        { x: 0.5, y: 0 },
+        { x: 0.5, y: 0.5 },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects POLYGON type without points', () => {
+    const result = createMarkerSchema.safeParse({
+      x: 0.5,
+      y: 0.5,
+      type: 'POLYGON',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects POLYGON with only 2 vertices', () => {
+    const result = createMarkerSchema.safeParse({
+      x: 0.5,
+      y: 0.5,
+      type: 'POLYGON',
+      points: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const pointsErrors = result.error.errors.filter((e) => e.path.includes('points'));
+      expect(pointsErrors.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('rejects invalid marker type', () => {
+    const result = createMarkerSchema.safeParse({
+      x: 0.5,
+      y: 0.5,
+      type: 'CIRCLE',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Polygon marker validation — updateMarkerSchema
+// ---------------------------------------------------------------------------
+
+describe('updateMarkerSchema — polygon fields', () => {
+  it('accepts updating points for existing polygon', () => {
+    const result = updateMarkerSchema.safeParse({
+      type: 'POLYGON',
+      points: [
+        { x: 0.1, y: 0.1 },
+        { x: 0.5, y: 0.1 },
+        { x: 0.5, y: 0.5 },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts updating fillColor only', () => {
+    const result = updateMarkerSchema.safeParse({ fillColor: '#ff000040' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fillColor).toBe('#ff000040');
+    }
+  });
+
+  it('accepts updating strokeWidth', () => {
+    const result = updateMarkerSchema.safeParse({ strokeWidth: 5 });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects update with too few vertices', () => {
+    const result = updateMarkerSchema.safeParse({
+      type: 'POLYGON',
+      points: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 

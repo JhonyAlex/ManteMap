@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Routes alerts to email, Slack, Teams, and Telegram via a central dispatcher with channel adapters and audit logging.
+Routes alerts to email, Slack, Teams, Telegram, and Webhook via a central dispatcher with channel adapters and audit logging.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ The system SHALL provide a `NotificationDispatcher` that queries project members
 
 ### Requirement: Channel Adapters
 
-The system SHALL implement 4 channel adapters conforming to `NotificationChannel { send(alert, user, config): Promise<DeliveryResult> }`:
+The system SHALL implement 5 channel adapters conforming to `NotificationChannel { send(alert, user, config): Promise<DeliveryResult> }`:
 
 | Channel | Transport | Config Source | Payload Format |
 |---------|-----------|---------------|----------------|
@@ -27,6 +27,7 @@ The system SHALL implement 4 channel adapters conforming to `NotificationChannel
 | Slack | `fetch` POST webhook | `UserChannelConfig.webhookUrl` | Block Kit JSON |
 | Teams | `fetch` POST webhook | `UserChannelConfig.webhookUrl` | MessageCard JSON |
 | Telegram | `fetch` POST Bot API | `UserChannelConfig.{botToken, chatId}` | Markdown text |
+| Webhook | `fetch` POST with HMAC | `WebhookEndpoint.{url, secret, eventTypes}` | Signed JSON |
 
 #### Scenario: Email sends HTML with app link
 - GIVEN SMTP configured and user has email preference enabled
@@ -43,6 +44,39 @@ The system SHALL implement 4 channel adapters conforming to `NotificationChannel
 - WHEN alert dispatched
 - THEN HTTP POST to `api.telegram.org/bot{token}/sendMessage` with `parse_mode=Markdown`
 
+#### Scenario: Webhook sends signed JSON payload
+- GIVEN valid WebhookEndpoint with secret configured
+- WHEN alert dispatched via WebhookChannel
+- THEN HTTP POST with `X-ManteMap-Signature` header and JSON body matching the template formatter output
+
+### Requirement: WebhookChannel registered in ChannelRegistry
+
+The system MUST register a `WebhookChannel` adapter implementing `NotificationChannel` in the ChannelRegistry alongside email, slack, teams, and telegram. The webhook channel SHALL POST signed JSON payloads to `WebhookEndpoint` URLs, filtered by endpoint `eventTypes`. Delivery SHALL log to `NotificationDelivery` with `channelType="webhook"`.
+
+#### Scenario: Webhook channel dispatches on alert
+- GIVEN a WebhookEndpoint configured with URL `https://hooks.example.com/mantemap` and eventTypes `["STATUS_INCIDENT"]`
+- WHEN a STATUS_INCIDENT alert is generated
+- THEN `WebhookChannel.send()` POSTs a JSON payload to the URL with `X-ManteMap-Signature` header
+
+#### Scenario: Webhook respects event type filter
+- GIVEN a WebhookEndpoint with eventTypes `["DOCUMENT_EXPIRING"]` only
+- WHEN a `STATUS_INCIDENT` alert fires
+- THEN `WebhookChannel` skips delivery to that endpoint
+
+#### Scenario: Webhook logs delivery to audit
+- GIVEN a webhook delivery succeeds with HTTP 200
+- WHEN dispatch completes
+- THEN a `NotificationDelivery` row is created with `channelType="webhook"` and `status="sent"`
+
+### Requirement: UserChannelConfig extended for webhook
+
+The `UserChannelConfig` model's `channelType` enum MUST include `"webhook"`. The `config` JSON field for webhook type MUST accept `{ webhookEndpointId: string }` referencing a `WebhookEndpoint`.
+
+#### Scenario: User enables webhook channel
+- GIVEN a user in a project with a WebhookEndpoint `endp-1`
+- WHEN the user configures channel preferences with `channelType="webhook"`, `config={ webhookEndpointId: "endp-1" }`
+- THEN the dispatcher routes alerts for that user through the referenced endpoint
+
 ### Requirement: NotificationDelivery Audit Log
 
 The system SHALL log every delivery attempt in `NotificationDelivery`:
@@ -51,7 +85,7 @@ The system SHALL log every delivery attempt in `NotificationDelivery`:
 |-------|------|-------------|
 | alertId | FK | The originating alert |
 | userId | FK | Target user |
-| channelType | String | `"email"`, `"slack"`, `"teams"`, or `"telegram"` |
+| channelType | String | `"email"`, `"slack"`, `"teams"`, `"telegram"`, or `"webhook"` |
 | status | String | `"sent"`, `"failed"`, or `"skipped"` |
 | errorMessage | String? | Failure reason if status is `"failed"` |
 | deliveredAt | DateTime | Timestamp of attempt |
@@ -80,7 +114,7 @@ The system SHALL provide formatter functions per `AlertType` returning channel-s
 | `STATUS_FINAL` | Item name, final status reached, project name, app link |
 | `EVENT_UPCOMING` | Event name, date, project name, app link |
 
-Each formatter SHALL return `{ email: {subject, html}, slack: {blocks}, teams: MessageCard, telegram: {text} }`.
+Each formatter SHALL return `{ email: {subject, html}, slack: {blocks}, teams: MessageCard, telegram: {text}, webhook: {event, timestamp, alert, project, appUrl} }`.
 
 #### Scenario: DOCUMENT_EXPIRING formatter includes expiry context
 - GIVEN alert with `metadata: { daysUntilExpiry: 7, documentName: "Permit.pdf" }`

@@ -249,22 +249,28 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 
 ### Fase actual
 
-**Fase 11 — Funciones avanzadas** 🔜 Siguiente. Fases 0-10 están completadas.
+**Fase 11 (Phase 12) — OCR / Document AI** 🔜 Siguiente. Fases 0-10 (SDD Phase 0-11) están completadas.
 
 ### Funciones terminadas
 
 - Monorepositorio configurado (pnpm workspaces + Turborepo)
 - Aplicación Next.js 15 con App Router
-- Schema Prisma completo (User, Account, Session, Project, ProjectMember, ItemType, DynamicField, Status, Item, ItemFieldValue, Document, DocumentVersion, Event, Location, FloorPlan, LocationMarker, Alert, NotificationPreference, UserChannelConfig, NotificationDelivery)
+- QR Codes (server-side generation con `qrcode`, batch sheets, print-ready output)
+- Webhooks (WebhookChannel, HMAC-SHA256 signing, per-endpoint event filtering)
+- Mobile Inspections (camera QR scanning con `html5-qrcode`, inspection audit, mobile-optimized views)
+- Polygons on Floor Plans (POINT|POLYGON type discriminator, vertex drawing/editing)
+- PDF Export (server-side `@react-pdf/renderer`, item sheet download)
+- Layers (category toggles en floor plan viewer, PolygonLayer)
+- Schema Prisma completo (User, Account, Session, Project, ProjectMember, ItemType, DynamicField, Status, Item, ItemFieldValue, Document, DocumentVersion, Event, Location, FloorPlan, LocationMarker, Alert, NotificationPreference, UserChannelConfig, NotificationDelivery, Inspection, WebhookEndpoint)
 - Docker Compose para PostgreSQL 16
 - Configuración TypeScript, ESLint, Prettier
 - Packages compartidos (database, shared, validation, ui, config)
 - 8 ADRs documentados (ADR-001 a ADR-008)
 - Documentación completa
 - Desplegado en producción (https://mante.saharapro.team/)
-- 19 dominios de specs en openspec/specs/
-- 11 cambios SDD archivados en openspec/changes/archive/
-- ~2,003 tests unitarios/componente/integración pasando
+- 24 dominios de specs en openspec/specs/
+- 12 cambios SDD archivados en openspec/changes/archive/
+- ~2,112 tests unitarios/componente/integración pasando
 
 ### Fases completadas (vía SDD)
 
@@ -281,10 +287,11 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 | Fase 8 | Alerts & Notifications (generación híbrida, campana, preferencias) | 166 |
 | Fase 9 | Dashboard & Reports (KPIs, timeline, CSV export, global dashboard) | 177 |
 | Fase 10 | External Notifications (email, Slack, Teams, Telegram, dispatcher, channel config UI) | 203 |
+| Phase 11 (Fase 10 ROADMAP) | QR Codes, Webhooks, Mobile Inspections, Polygons, PDF Export, Layers — 6 PRs, 4 slices, 62 tasks | 268 |
 
 ### Funcionalidades pendientes
 
-Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 11 — Funciones avanzadas** (QR codes, mobile inspections, webhooks, advanced features).
+Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 11 — OCR / Document AI** (extracción automática de fechas con Google Document AI o similar).
 
 ### Bloqueos
 
@@ -300,6 +307,7 @@ Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 11 �
 
 ### Últimas validaciones realizadas
 
+- ✅ Phase 11 Advanced Features: ~268 tests passing (6 PRs, 4 slices, 62 tasks), PASS WITH WARNINGS (0 CRITICAL quality issues)
 - ✅ Phase 10 External Notifications: 203 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 9 Dashboard: 177 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 8 Alerts: 166 tests passing, PASS WITH WARNINGS (0 CRITICAL)
@@ -312,7 +320,7 @@ Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 11 �
 
 ### Próximo paso recomendado
 
-Continuar con **Fase 11 — Funciones avanzadas** (QR codes, mobile inspections, webhooks, advanced features).
+Continuar con **Fase 11 — OCR / Document AI** (Phase 12 interna). Google Document AI o similar para extracción automática de fechas de expiración en documentos subidos.
 
 ---
 
@@ -366,6 +374,7 @@ docker compose -f docker-compose.dev.yml up -d
 | 2026-07-18 | OpenCode (deepseek-v4-pro) | Fase 9 completa: Dashboard con KPIs, timeline, CSV export, dashboard global. 177 tests. ADR-005 baseline resuelto, migración `20260718150342_add_all_phase_models` generada. | ✅ Archivado | Fase 10: Notificaciones externas |
 | 2026-07-18 | OpenCode (deepseek-v4-flash) | Fase 10 completa: External Notifications — dispatcher, 4 canales (email/Slack/Teams/Telegram), channel config UI, delivery audit log. 203 tests. | ✅ Archivado | Fase 11: Funciones avanzadas |
 | 2026-07-17 | OpenCode | Fase 2 completa: Slice 2 (DynamicFields 142 tests), Slice 3 (Statuses 135 tests), Slice 4 (Forms 146 tests). 423+ tests, 3 ADRs, 2 modelos Prisma, DynamicForm + 14 field components. | ✅ Archivado | Fase 3: Ítems |
+| 2026-07-18 | OpenCode (deepseek-v4-flash) | Phase 11 completa: Advanced Features — QR Codes, Webhooks, Mobile Inspections, Polygons, PDF Export, Layers. 6 PRs, 4 slices, 62 tasks, ~268 tests. | ✅ Archivado | Fase 11: OCR / Document AI |
 | 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | ✅ Completado | Slice 2: campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
 | 2026-07-15 | Deploy | Despliegue en producción (Dokploy + Docker) | ✅ Live | https://mante.saharapro.team/ |
@@ -373,4 +382,4 @@ docker compose -f docker-compose.dev.yml up -d
 ---
 
 > **Última actualización**: 2026-07-18
-> **Responsable**: OpenCode (Fases 2-10 completas — Fase 11 próxima)
+> **Responsable**: OpenCode (Fases 2-10 completas — Phase 11/Fase 10 archivada, OCR/Document AI próxima)

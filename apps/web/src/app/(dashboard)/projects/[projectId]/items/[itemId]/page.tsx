@@ -110,6 +110,7 @@ export default async function ItemDetailPage({
         item={itemData}
         projectId={projectId}
         availableStatuses={availableStatuses}
+        userId={user.id}
       />
     </div>
   );

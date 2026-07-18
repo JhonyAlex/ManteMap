@@ -23,6 +23,7 @@ export interface MemberPreference {
   slack: boolean;
   teams: boolean;
   telegram: boolean;
+  webhook: boolean;
 }
 
 export interface MemberWithPreferences {
@@ -50,7 +51,7 @@ export interface DispatcherDependencies {
   getRecentAlerts?: (projectId: string, sinceMinutes: number) => Promise<AlertForDispatch[]>;
 }
 
-const ALL_CHANNEL_TYPES = ['email', 'slack', 'teams', 'telegram'] as const;
+const ALL_CHANNEL_TYPES = ['email', 'slack', 'teams', 'telegram', 'webhook'] as const;
 
 // ---------------------------------------------------------------------------
 // NotificationDispatcher
