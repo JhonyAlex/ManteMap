@@ -108,7 +108,7 @@ export function ChannelConfigForm({ projectId, channelType }: ChannelConfigFormP
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+  } = useForm<Record<string, string>>({
     resolver: zodResolver(schema),
     defaultValues: (existingConfig?.config ?? {}) as Record<string, string>,
   });
