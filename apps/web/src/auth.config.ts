@@ -10,8 +10,17 @@ import type { NextAuthConfig } from 'next-auth';
  */
 export const authConfig = {
   trustHost: true,
+  debug: process.env.NODE_ENV !== 'production',
   pages: {
     signIn: '/login',
+  },
+  cookies: {
+    sessionToken: {
+      options: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      },
+    },
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
