@@ -99,11 +99,12 @@ export async function findFloorPlansByLocation(
 }
 
 export async function deleteFloorPlan(
-  locationId: string,
   floorPlanId: string,
   client: PrismaClient = prisma
 ): Promise<void> {
-  const existing = await findFloorPlanById(locationId, floorPlanId, client);
+  const existing = await client.floorPlan.findUnique({
+    where: { id: floorPlanId },
+  });
   if (!existing) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }

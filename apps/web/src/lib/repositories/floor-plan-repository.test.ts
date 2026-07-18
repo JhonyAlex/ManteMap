@@ -160,10 +160,10 @@ describe('FloorPlanRepository findFloorPlansByLocation', () => {
 
 describe('FloorPlanRepository deleteFloorPlan', () => {
   it('deletes a floor plan when found', async () => {
-    mockPrismaClient.floorPlan.findFirst.mockResolvedValue(floorPlanRecord);
+    mockPrismaClient.floorPlan.findUnique.mockResolvedValue(floorPlanRecord);
     mockPrismaClient.floorPlan.delete.mockResolvedValue(floorPlanRecord);
 
-    await deleteFloorPlan(LOCATION_ID, FLOOR_PLAN_ID);
+    await deleteFloorPlan(FLOOR_PLAN_ID);
 
     expect(mockPrismaClient.floorPlan.delete).toHaveBeenCalledWith({
       where: { id: FLOOR_PLAN_ID },
@@ -171,9 +171,9 @@ describe('FloorPlanRepository deleteFloorPlan', () => {
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
-    mockPrismaClient.floorPlan.findFirst.mockResolvedValue(null);
+    mockPrismaClient.floorPlan.findUnique.mockResolvedValue(null);
 
-    await expect(deleteFloorPlan(LOCATION_ID, 'clnonexistentxxxxxxx')).rejects.toThrow(
+    await expect(deleteFloorPlan('clnonexistentxxxxxxx')).rejects.toThrow(
       NotFoundError
     );
   });

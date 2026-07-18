@@ -14,14 +14,14 @@ import { forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { getFloorPlan, removeFloorPlan } from '@/lib/services/floor-plan-service';
 import type { ApiResponse } from '@mantemap/shared';
 
-type Params = { params: Promise<{ projectId: string; locationId: string; floorPlanId: string }> };
+type Params = { params: Promise<{ projectId: string; floorPlanId: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, locationId, floorPlanId } = await params;
-    const result = await getFloorPlan(projectId, locationId, floorPlanId, auth.user.id);
+    const { projectId, floorPlanId } = await params;
+    const result = await getFloorPlan(projectId, floorPlanId, auth.user.id);
     return NextResponse.json({ data: result.floorPlan } satisfies ApiResponse);
   } catch (error: unknown) {
     if (error instanceof NotFoundError) return notFound('Floor plan not found');
@@ -33,8 +33,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, locationId, floorPlanId } = await params;
-    await removeFloorPlan(projectId, locationId, floorPlanId, auth.user.id);
+    const { projectId, floorPlanId } = await params;
+    await removeFloorPlan(projectId, floorPlanId, auth.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
     if (error instanceof NotFoundError) return notFound('Floor plan not found');

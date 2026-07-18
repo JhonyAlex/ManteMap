@@ -267,15 +267,15 @@ describe('FloorPlanService getFloorPlan', () => {
       new ValidationError('Not member')
     );
 
-    await expect(getFloorPlan(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow();
+    await expect(getFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow();
   });
 
   it('returns a floor plan by ID', async () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
 
-    const result = await getFloorPlan(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MEMBER_ID);
+    const result = await getFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
 
-    expect(repository.findFloorPlanById).toHaveBeenCalledWith(LOCATION_ID, FLOOR_PLAN_ID);
+    expect(repository.findFloorPlanById).toHaveBeenCalledWith(FLOOR_PLAN_ID);
     expect(result.floorPlan).toEqual(floorPlanRecord);
   });
 
@@ -283,7 +283,7 @@ describe('FloorPlanService getFloorPlan', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
 
     await expect(
-      getFloorPlan(PROJECT_ID, LOCATION_ID, 'clnonexistentxxxxxxx', MEMBER_ID)
+      getFloorPlan(PROJECT_ID, 'clnonexistentxxxxxxx', MEMBER_ID)
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -321,7 +321,7 @@ describe('FloorPlanService removeFloorPlan', () => {
       new ValidationError('Not owner')
     );
 
-    await expect(removeFloorPlan(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow();
+    await expect(removeFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow();
     expect(repository.deleteFloorPlan).not.toHaveBeenCalled();
   });
 
@@ -330,10 +330,10 @@ describe('FloorPlanService removeFloorPlan', () => {
     vi.mocked(repository.deleteFloorPlan).mockResolvedValue(undefined);
     mockStorageDriver.deleteFile.mockResolvedValue(undefined);
 
-    await removeFloorPlan(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, OWNER_ID);
+    await removeFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, OWNER_ID);
 
     expect(mockStorageDriver.deleteFile).toHaveBeenCalledWith(floorPlanRecord.imageUrl);
-    expect(repository.deleteFloorPlan).toHaveBeenCalledWith(LOCATION_ID, FLOOR_PLAN_ID);
+    expect(repository.deleteFloorPlan).toHaveBeenCalledWith(FLOOR_PLAN_ID);
   });
 
   it('deletes floor plan even if storage file deletion fails', async () => {
@@ -341,16 +341,16 @@ describe('FloorPlanService removeFloorPlan', () => {
     vi.mocked(repository.deleteFloorPlan).mockResolvedValue(undefined);
     mockStorageDriver.deleteFile.mockRejectedValue(new Error('ENOENT'));
 
-    await removeFloorPlan(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, OWNER_ID);
+    await removeFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, OWNER_ID);
 
-    expect(repository.deleteFloorPlan).toHaveBeenCalledWith(LOCATION_ID, FLOOR_PLAN_ID);
+    expect(repository.deleteFloorPlan).toHaveBeenCalledWith(FLOOR_PLAN_ID);
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
 
     await expect(
-      removeFloorPlan(PROJECT_ID, LOCATION_ID, 'clnonexistentxxxxxxx', OWNER_ID)
+      removeFloorPlan(PROJECT_ID, 'clnonexistentxxxxxxx', OWNER_ID)
     ).rejects.toThrow(NotFoundError);
   });
 });
@@ -366,7 +366,7 @@ describe('FloorPlanService addMarker', () => {
     );
 
     await expect(
-      addMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, { x: 0.5, y: 0.3 }, MEMBER_ID)
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { x: 0.5, y: 0.3 }, MEMBER_ID)
     ).rejects.toThrow();
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -377,7 +377,6 @@ describe('FloorPlanService addMarker', () => {
 
     const result = await addMarker(
       PROJECT_ID,
-      LOCATION_ID,
       FLOOR_PLAN_ID,
       { x: 0.5, y: 0.3, label: 'Server Rack', color: '#ff0000' },
       OWNER_ID
@@ -394,7 +393,7 @@ describe('FloorPlanService addMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
 
     await expect(
-      addMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, { x: 1.5, y: 0.3 }, OWNER_ID)
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { x: 1.5, y: 0.3 }, OWNER_ID)
     ).rejects.toThrow(); // Zod rejects first
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -403,7 +402,7 @@ describe('FloorPlanService addMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
 
     await expect(
-      addMarker(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, { x: 0.5, y: -0.1 }, OWNER_ID)
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { x: 0.5, y: -0.1 }, OWNER_ID)
     ).rejects.toThrow(); // Zod rejects first
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -412,7 +411,7 @@ describe('FloorPlanService addMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
 
     await expect(
-      addMarker(PROJECT_ID, LOCATION_ID, 'clnonexistentxxxxxxx', { x: 0.5, y: 0.3 }, OWNER_ID)
+      addMarker(PROJECT_ID, 'clnonexistentxxxxxxx', { x: 0.5, y: 0.3 }, OWNER_ID)
     ).rejects.toThrow(NotFoundError);
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -428,14 +427,14 @@ describe('FloorPlanService listMarkers', () => {
       new ValidationError('Not member')
     );
 
-    await expect(listMarkers(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow();
+    await expect(listMarkers(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow();
   });
 
   it('returns markers for a floor plan', async () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
     vi.mocked(repository.findMarkersByFloorPlan).mockResolvedValue([markerRecord] as never);
 
-    const result = await listMarkers(PROJECT_ID, LOCATION_ID, FLOOR_PLAN_ID, MEMBER_ID);
+    const result = await listMarkers(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
 
     expect(repository.findMarkersByFloorPlan).toHaveBeenCalledWith(FLOOR_PLAN_ID);
     expect(result.markers).toHaveLength(1);

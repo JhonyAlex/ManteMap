@@ -120,13 +120,12 @@ export async function uploadFloorPlan(
 
 export async function getFloorPlan(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   userId: string
 ) {
   await requireProjectMember(projectId, userId);
 
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }
@@ -147,14 +146,13 @@ export async function listFloorPlans(
 
 export async function removeFloorPlan(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   userId: string
 ) {
   await requireProjectOwner(projectId, userId);
 
   // Get floor plan to find storage path
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }
@@ -168,7 +166,7 @@ export async function removeFloorPlan(
   }
 
   // Delete floor plan (cascade deletes markers)
-  await deleteFloorPlanRepo(locationId, floorPlanId);
+  await deleteFloorPlanRepo(floorPlanId);
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +175,6 @@ export async function removeFloorPlan(
 
 export async function addMarker(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   input: CreateMarkerInput,
   userId: string
@@ -185,7 +182,7 @@ export async function addMarker(
   await requireProjectOwner(projectId, userId);
 
   // Verify floor plan exists
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }
@@ -209,7 +206,6 @@ export async function addMarker(
 
 export async function getMarker(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   markerId: string,
   userId: string
@@ -217,7 +213,7 @@ export async function getMarker(
   await requireProjectMember(projectId, userId);
 
   // Verify floor plan exists
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }
@@ -232,14 +228,13 @@ export async function getMarker(
 
 export async function listMarkers(
   projectId: string,
-  locationId: string,
   floorPlanId: string,
   userId: string
 ) {
   await requireProjectMember(projectId, userId);
 
   // Verify floor plan exists
-  const floorPlan = await findFloorPlanById(locationId, floorPlanId);
+  const floorPlan = await findFloorPlanById(floorPlanId);
   if (!floorPlan) {
     throw new NotFoundError('FloorPlan', floorPlanId);
   }
