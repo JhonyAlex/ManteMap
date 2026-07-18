@@ -14,6 +14,7 @@ import { getStorageDriver } from '@/lib/storage';
 import { requireProjectMember } from '@/lib/services/project-access-service';
 import { generateAlert } from '@/lib/services/alert-service';
 import { mapDaysToSeverity } from '@/lib/services/alert-service';
+import { getNotificationDispatcher } from '@/lib/services/channels';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -220,7 +221,7 @@ export async function updateDocumentMetadata(
       : 0;
     const severity = expiresAt ? mapDaysToSeverity(days) : 'INFO';
 
-    void generateAlert(projectId, {
+    const alert = await generateAlert(projectId, {
       alertType: 'DOCUMENT_EXPIRING',
       severity,
       sourceType: 'document',
@@ -233,6 +234,8 @@ export async function updateDocumentMetadata(
         : `Expiration date has been removed.`,
       metadata: { daysUntilExpiry: days },
     });
+
+    void getNotificationDispatcher().dispatch(alert, projectId);
   }
 
   return { document: updated };

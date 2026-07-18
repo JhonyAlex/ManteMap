@@ -25,13 +25,21 @@ export interface NotificationPreference {
   projectId: string;
   alertType: string;
   enabled: boolean;
+  email?: boolean;
+  slack?: boolean;
+  teams?: boolean;
+  telegram?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface UpdatePreferenceInput {
   alertType: string;
-  enabled: boolean;
+  enabled?: boolean;
+  email?: boolean;
+  slack?: boolean;
+  teams?: boolean;
+  telegram?: boolean;
 }
 
 // ---------------------------------------------------------------------------

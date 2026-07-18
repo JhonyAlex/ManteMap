@@ -12,3 +12,4 @@ export * from './event';
 export * from './location';
 export * from './floor-plan';
 export * from './alert';
+export * from './notification';

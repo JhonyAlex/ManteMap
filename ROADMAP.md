@@ -193,20 +193,25 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 9 — Notificaciones externas 🔜 Siguiente
+## Fase 9 — Notificaciones externas ✅
 
 **Objetivo**: Conectar las alertas internas con canales de notificación reales.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Email notifications | ⬜ Pendiente | SMTP / SendGrid / Resend integration |
-| Slack notifications | ⬜ Pendiente | Webhook por proyecto, mensajes formateados |
-| Teams notifications | ⬜ Pendiente | Webhook connector, tarjetas adaptativas |
-| Telegram notifications | ⬜ Pendiente | Bot token, mensajes por chat ID |
-| Canal preferences UI | ⬜ Pendiente | Extender NotificationPreferences con canales |
-| Templates | ⬜ Pendiente | Plantillas de notificación por tipo de alerta |
+| Email notifications | ✅ Completado | nodemailer SMTP, HTML body con app link |
+| Slack notifications | ✅ Completado | Webhook por usuario, Block Kit messages |
+| Teams notifications | ✅ Completado | Webhook connector, MessageCard JSON |
+| Telegram notifications | ✅ Completado | Bot API con parse_mode=Markdown |
+| NotificationDispatcher service | ✅ Completado | Central dispatcher, fire-and-forget, Promise.allSettled |
+| Channel config CRUD API + UI | ✅ Completado | UserChannelConfig model, webhook URL/token form, test button |
+| Delivery audit log | ✅ Completado | NotificationDelivery model, sent/failed/skipped per alert+user+channel |
+| Channel preferences toggle columns | ✅ Completado | 4 columnas (email/slack/teams/telegram) en NotificationPreferences |
+| Template formatters | ✅ Completado | Pure functions por AlertType (5 total) |
+| Tests | ✅ Completado | 203 tests (unit + component + integration) |
 
 **Dependencias**: Fase 7 (Alertas) completada.
+**Tests**: 203. **Archivado**: 2026-07-18.
 
 ---
 
@@ -219,7 +224,6 @@ Hoja de ruta de desarrollo por fases.
 | Códigos QR | ⬜ Evaluar | QR imprimible por ítem |
 | Inspecciones móviles | ⬜ Evaluar | Escanear QR → ver ficha |
 | Webhooks | ⬜ Evaluar | Notificaciones a sistemas externos |
-| Notificaciones externas | ⬜ Evaluar | Email, Teams, Slack, Telegram |
 | Polígonos en planos | ⬜ Evaluar | Dibujar zonas interactivas |
 | Capas | ⬜ Evaluar | Filtrar por capas temáticas |
 | Exportación PDF | ⬜ Evaluar | Fichas e informes en PDF |
@@ -231,7 +235,7 @@ Hoja de ruta de desarrollo por fases.
 
 ## MVP
 
-El MVP corresponde a las **Fases 0–7** completas (nuestro Phase 8 = ROADMAP Fase 7).
+El MVP corresponde a las **Fases 0–7** completas (nuestro Phase 8 = ROADMAP Fase 7). Fases 8-9 son extensiones post-MVP.
 
 Debe permitir:
 1. Iniciar sesión
@@ -250,4 +254,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-18. Fases 0-9 completas vía SDD: Auth, ItemTypes, DynamicFields, Statuses, Items, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications, Dashboard & Reports. ~1,800+ tests. ADR-005 resuelto: migración `20260718150342_add_all_phase_models` generada. Próxima fase: Notificaciones externas.
+> **Última actualización**: 2026-07-18. Fases 0-9 completas vía SDD: Auth, ItemTypes, DynamicFields, Statuses, Items, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications, Dashboard & Reports, External Notifications (email/Slack/Teams/Telegram). ~2,003 tests. ADR-005 resuelto: migración `20260718150342_add_all_phase_models` generada. Próxima fase: Funciones avanzadas (Fase 10 — Phase 11).

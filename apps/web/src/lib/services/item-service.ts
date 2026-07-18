@@ -19,6 +19,7 @@ import { listFieldsByItemType } from '@/lib/repositories/dynamic-field-repositor
 import { getDefaultStatus, getStatusById } from '@/lib/repositories/status-repository';
 import { requireProjectMember, requireProjectOwner } from '@/lib/services/project-access-service';
 import { generateAlert } from '@/lib/services/alert-service';
+import { getNotificationDispatcher } from '@/lib/services/channels';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -240,7 +241,7 @@ export async function transitionStatus(
 
   // Fire-and-forget: generate alert for incident/blocking/final status transitions
   if (targetStatus.isIncident) {
-    void generateAlert(projectId, {
+    const alert = await generateAlert(projectId, {
       alertType: 'STATUS_INCIDENT',
       severity: 'CRITICAL',
       sourceType: 'item',
@@ -249,8 +250,9 @@ export async function transitionStatus(
       message: `Status transitioned to incident. Immediate attention required.`,
       metadata: { statusName: targetStatus.name, statusId: targetStatus.id },
     });
+    void getNotificationDispatcher().dispatch(alert, projectId);
   } else if (targetStatus.isBlocking) {
-    void generateAlert(projectId, {
+    const alert = await generateAlert(projectId, {
       alertType: 'STATUS_BLOCKING',
       severity: 'WARNING',
       sourceType: 'item',
@@ -259,8 +261,9 @@ export async function transitionStatus(
       message: `Status transitioned to blocking. Workflow may be impacted.`,
       metadata: { statusName: targetStatus.name, statusId: targetStatus.id },
     });
+    void getNotificationDispatcher().dispatch(alert, projectId);
   } else if (targetStatus.isFinal) {
-    void generateAlert(projectId, {
+    const alert = await generateAlert(projectId, {
       alertType: 'STATUS_FINAL',
       severity: 'INFO',
       sourceType: 'item',
@@ -269,6 +272,7 @@ export async function transitionStatus(
       message: `Item has reached a terminal status.`,
       metadata: { statusName: targetStatus.name, statusId: targetStatus.id },
     });
+    void getNotificationDispatcher().dispatch(alert, projectId);
   }
 
   return { item: updated };

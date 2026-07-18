@@ -6,7 +6,7 @@
 
 ## Fase activa
 
-**Todas las fases del MVP (0-9) completadas.** Próxima: **Fase 10 — Notificaciones externas**.
+**Todas las fases del MVP (0-9) completadas.** Próxima: **Fase 11 — Funciones avanzadas**.
 
 ### Fases completadas
 
@@ -22,7 +22,8 @@
 | Fase 7 | Locations (jerarquía, planos, visor React Konva, LOCATION_RELATION) | 311 | ✅ |
 | Fase 8 | Alerts & Notifications (generación híbrida, campana, preferencias) | 166 | ✅ |
 | Fase 9 | Dashboard & Reports (KPIs, timeline, CSV export, global dashboard) | 177 | ✅ |
-| **Total** | **17 dominios de specs, 9 cambios SDD archivados** | **~1,800+** | ✅ |
+| Fase 10 | External Notifications (dispatcher, 4 canales, channel config UI, delivery log) | 203 | ✅ |
+| **Total** | **19 dominios de specs, 11 cambios SDD archivados** | **~2,003** | ✅ |
 
 ---
 
@@ -31,7 +32,7 @@
 - **URL**: https://mante.saharapro.team/
 - **Plataforma**: Dokploy + Docker Swarm
 - **Base de datos**: PostgreSQL 16 (servicio Swarm `mantemap-db-7nrNyw`)
-- **Estado**: Landing page funcionando. Deploy de fases 7-9 en curso (push a master → Dokploy auto-deploy).
+- **Estado**: Landing page funcionando. Deploy de fases 7-10 en curso (push a master → Dokploy auto-deploy).
 - **Migraciones**: `20260717000000_baseline_production_schema` (baseline — marked as applied) + `20260717000100_add_item_types` (applied) + `20260718150342_add_all_phase_models` (pending deploy). ADR-005 resuelto.
 
 ### Notas del despliegue
@@ -61,16 +62,17 @@
 - ✅ Dashboard global cross-project.
 - ✅ Exportación CSV con prevención de inyección de fórmulas.
 - ✅ 3 nuevos primitivos UI: Card, Progress, Skeleton.
-- ✅ 9 cambios SDD archivados con specs, design docs y verify reports.
-- ✅ 17 dominios de specs en openspec/specs/.
-- ✅ ~1,800+ tests unitarios/componente/integración.
+- ✅ 11 cambios SDD archivados con specs, design docs y verify reports.
+- ✅ 19 dominios de specs en openspec/specs/.
+- ✅ ~2,003 tests unitarios/componente/integración.
+- ✅ Notificaciones externas: 4 canales (Email, Slack, Teams, Telegram), dispatcher, channel config UI y delivery audit log.
 
 ## Qué está incompleto
 
-- Deploy de fases 7-9 en producción (migración `20260718150342_add_all_phase_models` pendiente de aplicar vía Dokploy auto-deploy).
+- Deploy de fases 7-10 en producción (migraciones pendientes de aplicar vía Dokploy auto-deploy).
 - Seed de demostración.
 - Preference-based alert filtering (deferido de Fase 8).
-- Fase 10: Notificaciones externas (Email, Slack, Teams, Telegram).
+- Fase 11: Funciones avanzadas (QR codes, mobile inspections, webhooks, advanced features).
 
 ## Qué errores existen
 
@@ -105,7 +107,7 @@ pnpm dev
 pnpm lint              # ✅ Pass
 pnpm typecheck         # ✅ Pass
 pnpm build             # Known Windows standalone symlink EPERM risk
-pnpm test              # ✅ ~1,800+ unit/component, 51 integration (DB offline)
+pnpm test              # ✅ ~1,983 unit/component, 51 integration (DB offline)
 ```
 
 ---
@@ -116,8 +118,8 @@ pnpm test              # ✅ ~1,800+ unit/component, 51 integration (DB offline)
 
 ## Último commit
 
-`d22a683` — chore: replace ItemType-only migration with comprehensive all-models migration
+`549ae7f` — fix: add trustHost to auth config to resolve UntrustedHost error
 
 ## Próxima tarea concreta
 
-**Fase 10 — Notificaciones externas**: integrar canales de notificación (Email, Slack, Teams, Telegram) con el sistema de alertas de la Fase 8. Permitir que los usuarios reciban avisos de vencimientos, cambios de estado y eventos sin estar logueados en la app.
+**Fase 11 — Funciones avanzadas**: implementar QR codes para ítems, inspecciones móviles mediante escaneo, webhooks para integraciones externas, y otras funcionalidades extendidas.

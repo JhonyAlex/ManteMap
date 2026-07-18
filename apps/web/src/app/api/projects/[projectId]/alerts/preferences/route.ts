@@ -40,7 +40,15 @@ export async function PUT(
     }
 
     // Validate alertType
-    const { alertType, enabled } = body as { alertType?: string; enabled?: boolean };
+    const { alertType, enabled, email, slack, teams, telegram } = body as {
+      alertType?: string;
+      enabled?: boolean;
+      email?: boolean;
+      slack?: boolean;
+      teams?: boolean;
+      telegram?: boolean;
+    };
+
     if (!alertType || !alertTypeEnum.safeParse(alertType).success) {
       return badRequest('Valid alertType is required');
     }
@@ -48,10 +56,18 @@ export async function PUT(
       return badRequest('enabled (boolean) is required');
     }
 
-    const result = await updatePreference(projectId, auth.user.id, {
+    const updateData: Parameters<typeof updatePreference>[2] = {
       alertType: alertType as Parameters<typeof updatePreference>[2]['alertType'],
       enabled,
-    });
+    };
+
+    // Pass channel booleans if present
+    if (typeof email === 'boolean') updateData.email = email;
+    if (typeof slack === 'boolean') updateData.slack = slack;
+    if (typeof teams === 'boolean') updateData.teams = teams;
+    if (typeof telegram === 'boolean') updateData.telegram = telegram;
+
+    const result = await updatePreference(projectId, auth.user.id, updateData);
 
     return NextResponse.json(
       { data: result, message: 'Preference updated successfully' } satisfies ApiResponse

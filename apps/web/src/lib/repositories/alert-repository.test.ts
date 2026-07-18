@@ -379,4 +379,129 @@ describe('upsertNotificationPreference', () => {
 
     expect(result.enabled).toBe(false);
   });
+
+  it('creates preference with channel booleans (email=true, slack=true)', async () => {
+    const channelPref = {
+      ...notificationPref,
+      email: true,
+      slack: true,
+      teams: false,
+      telegram: false,
+    };
+    (db.notificationPreference.upsert as ReturnType<typeof vi.fn>).mockResolvedValue(channelPref);
+
+    const result = await upsertNotificationPreference(USER_ID, PROJECT_ID, {
+      alertType: 'DOCUMENT_EXPIRING',
+      enabled: true,
+      email: true,
+      slack: true,
+    });
+
+    expect(db.notificationPreference.upsert).toHaveBeenCalledWith({
+      where: {
+        userId_projectId_alertType: {
+          userId: USER_ID,
+          projectId: PROJECT_ID,
+          alertType: 'DOCUMENT_EXPIRING',
+        },
+      },
+      create: {
+        userId: USER_ID,
+        projectId: PROJECT_ID,
+        alertType: 'DOCUMENT_EXPIRING',
+        enabled: true,
+        email: true,
+        slack: true,
+      },
+      update: {
+        enabled: true,
+        email: true,
+        slack: true,
+      },
+    });
+    expect(result.email).toBe(true);
+    expect(result.slack).toBe(true);
+    expect(result.teams).toBe(false);
+    expect(result.telegram).toBe(false);
+  });
+
+  it('updates only enabled when no channel fields provided', async () => {
+    const enabledOnlyPref = { ...notificationPref, enabled: false };
+    (db.notificationPreference.upsert as ReturnType<typeof vi.fn>).mockResolvedValue(enabledOnlyPref);
+
+    await upsertNotificationPreference(USER_ID, PROJECT_ID, {
+      alertType: 'DOCUMENT_EXPIRING',
+      enabled: false,
+    });
+
+    expect(db.notificationPreference.upsert).toHaveBeenCalledWith({
+      where: {
+        userId_projectId_alertType: {
+          userId: USER_ID,
+          projectId: PROJECT_ID,
+          alertType: 'DOCUMENT_EXPIRING',
+        },
+      },
+      create: {
+        userId: USER_ID,
+        projectId: PROJECT_ID,
+        alertType: 'DOCUMENT_EXPIRING',
+        enabled: false,
+      },
+      update: {
+        enabled: false,
+      },
+    });
+  });
+
+  it('persists all four channel booleans when provided', async () => {
+    const allChannelsPref = {
+      ...notificationPref,
+      email: true,
+      slack: true,
+      teams: true,
+      telegram: true,
+    };
+    (db.notificationPreference.upsert as ReturnType<typeof vi.fn>).mockResolvedValue(allChannelsPref);
+
+    const result = await upsertNotificationPreference(USER_ID, PROJECT_ID, {
+      alertType: 'STATUS_INCIDENT',
+      enabled: true,
+      email: true,
+      slack: true,
+      teams: true,
+      telegram: true,
+    });
+
+    expect(db.notificationPreference.upsert).toHaveBeenCalledWith({
+      where: {
+        userId_projectId_alertType: {
+          userId: USER_ID,
+          projectId: PROJECT_ID,
+          alertType: 'STATUS_INCIDENT',
+        },
+      },
+      create: {
+        userId: USER_ID,
+        projectId: PROJECT_ID,
+        alertType: 'STATUS_INCIDENT',
+        enabled: true,
+        email: true,
+        slack: true,
+        teams: true,
+        telegram: true,
+      },
+      update: {
+        enabled: true,
+        email: true,
+        slack: true,
+        teams: true,
+        telegram: true,
+      },
+    });
+    expect(result.email).toBe(true);
+    expect(result.slack).toBe(true);
+    expect(result.teams).toBe(true);
+    expect(result.telegram).toBe(true);
+  });
 });

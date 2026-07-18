@@ -3,6 +3,7 @@ import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
 import { forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { scanDocumentExpirations, scanUpcomingEvents } from '@/lib/services/alert-service';
+import { getNotificationDispatcher } from '@/lib/services/channels';
 import type { ApiResponse } from '@mantemap/shared';
 
 export async function POST(
@@ -21,6 +22,9 @@ export async function POST(
     ]);
 
     const total = documentAlerts + eventAlerts;
+
+    // Fire-and-forget: trigger external notification dispatch
+    void getNotificationDispatcher().dispatchForProject(projectId);
 
     return NextResponse.json(
       {

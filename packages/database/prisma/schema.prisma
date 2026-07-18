@@ -35,6 +35,7 @@ model User {
   ownedProjects  Project[]
   uploadedDocs   DocumentVersion[]
   notificationPreferences NotificationPreference[]
+  channelConfigs          UserChannelConfig[]
 
   @@map("users")
 }
@@ -455,6 +456,10 @@ model NotificationPreference {
   projectId String
   alertType AlertType
   enabled   Boolean  @default(true)
+  email     Boolean  @default(false)
+  slack     Boolean  @default(false)
+  teams     Boolean  @default(false)
+  telegram  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -463,6 +468,36 @@ model NotificationPreference {
 
   @@unique([userId, projectId, alertType])
   @@map("notification_preferences")
+}
+
+model UserChannelConfig {
+  id          String   @id @default(cuid())
+  userId      String
+  channelType String
+  config      Json
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelType])
+  @@map("user_channel_configs")
+}
+
+model NotificationDelivery {
+  id           String   @id @default(cuid())
+  alertId      String
+  userId       String
+  channelType  String
+  status       String
+  errorMessage String?
+  deliveredAt  DateTime @default(now())
+
+  @@index([alertId])
+  @@index([userId])
+  @@index([status])
+  @@map("notification_deliveries")
 }
 
 // -------------------------------------------

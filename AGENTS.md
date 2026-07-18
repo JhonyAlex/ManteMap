@@ -249,22 +249,22 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 
 ### Fase actual
 
-**Fase 9 — Dashboard & Reports** 🔜 Siguiente. Fases 0-8 están completadas.
+**Fase 11 — Funciones avanzadas** 🔜 Siguiente. Fases 0-10 están completadas.
 
 ### Funciones terminadas
 
 - Monorepositorio configurado (pnpm workspaces + Turborepo)
 - Aplicación Next.js 15 con App Router
-- Schema Prisma completo (User, Account, Session, Project, ProjectMember, ItemType, DynamicField, Status, Item, ItemFieldValue, Document, DocumentVersion, Event, Location, FloorPlan, LocationMarker, Alert, NotificationPreference)
+- Schema Prisma completo (User, Account, Session, Project, ProjectMember, ItemType, DynamicField, Status, Item, ItemFieldValue, Document, DocumentVersion, Event, Location, FloorPlan, LocationMarker, Alert, NotificationPreference, UserChannelConfig, NotificationDelivery)
 - Docker Compose para PostgreSQL 16
 - Configuración TypeScript, ESLint, Prettier
 - Packages compartidos (database, shared, validation, ui, config)
 - 8 ADRs documentados (ADR-001 a ADR-008)
 - Documentación completa
 - Desplegado en producción (https://mante.saharapro.team/)
-- 17 dominios de specs en openspec/specs/
-- 8 cambios SDD archivados en openspec/changes/archive/
-- ~1,800+ tests unitarios/componente/integración pasando
+- 19 dominios de specs en openspec/specs/
+- 11 cambios SDD archivados en openspec/changes/archive/
+- ~2,003 tests unitarios/componente/integración pasando
 
 ### Fases completadas (vía SDD)
 
@@ -280,10 +280,11 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 | Fase 7 | Locations (jerarquía, planos, visor React Konva, LOCATION_RELATION) | 311 |
 | Fase 8 | Alerts & Notifications (generación híbrida, campana, preferencias) | 166 |
 | Fase 9 | Dashboard & Reports (KPIs, timeline, CSV export, global dashboard) | 177 |
+| Fase 10 | External Notifications (email, Slack, Teams, Telegram, dispatcher, channel config UI) | 203 |
 
 ### Funcionalidades pendientes
 
-Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 10 — Notificaciones externas** (Email, Slack, Teams, Telegram).
+Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 11 — Funciones avanzadas** (QR codes, mobile inspections, webhooks, advanced features).
 
 ### Bloqueos
 
@@ -299,6 +300,7 @@ Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 10 �
 
 ### Últimas validaciones realizadas
 
+- ✅ Phase 10 External Notifications: 203 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 9 Dashboard: 177 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 8 Alerts: 166 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 7 Locations: 311 tests passing, PASS WITH WARNINGS (0 CRITICAL)
@@ -310,7 +312,7 @@ Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 10 �
 
 ### Próximo paso recomendado
 
-Continuar con **Fase 10 — Notificaciones externas**: Email, Slack, Teams, Telegram. Conecta las alertas de la Fase 8 con canales reales de notificación para que los usuarios reciban avisos de vencimientos, estados y eventos sin necesidad de estar logueados.
+Continuar con **Fase 11 — Funciones avanzadas** (QR codes, mobile inspections, webhooks, advanced features).
 
 ---
 
@@ -362,6 +364,7 @@ docker compose -f docker-compose.dev.yml up -d
 |-------|--------|-------------------|--------|--------------|
 | 2026-07-18 | OpenCode (mimo-v2.5-pro) | Fases 3-8 completas vía SDD: Items CRUD+UI, Documents, Events+Calendar, Locations+FloorPlans, Alerts+Notifications. ~1,800+ tests. | ✅ Archivado | Fase 9: Dashboard & Reports |
 | 2026-07-18 | OpenCode (deepseek-v4-pro) | Fase 9 completa: Dashboard con KPIs, timeline, CSV export, dashboard global. 177 tests. ADR-005 baseline resuelto, migración `20260718150342_add_all_phase_models` generada. | ✅ Archivado | Fase 10: Notificaciones externas |
+| 2026-07-18 | OpenCode (deepseek-v4-flash) | Fase 10 completa: External Notifications — dispatcher, 4 canales (email/Slack/Teams/Telegram), channel config UI, delivery audit log. 203 tests. | ✅ Archivado | Fase 11: Funciones avanzadas |
 | 2026-07-17 | OpenCode | Fase 2 completa: Slice 2 (DynamicFields 142 tests), Slice 3 (Statuses 135 tests), Slice 4 (Forms 146 tests). 423+ tests, 3 ADRs, 2 modelos Prisma, DynamicForm + 14 field components. | ✅ Archivado | Fase 3: Ítems |
 | 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | ✅ Completado | Slice 2: campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |
@@ -370,4 +373,4 @@ docker compose -f docker-compose.dev.yml up -d
 ---
 
 > **Última actualización**: 2026-07-18
-> **Responsable**: OpenCode (Fases 2-8 completas — Fase 9 próxima)
+> **Responsable**: OpenCode (Fases 2-10 completas — Fase 11 próxima)

@@ -168,4 +168,74 @@ describe('PUT /api/projects/[projectId]/alerts/preferences', () => {
     const body = await response.json();
     expect(body.message).not.toContain('Prisma secret');
   });
+
+  // Extended: channel boolean fields
+  it('accepts optional email channel boolean', async () => {
+    vi.mocked(updatePreference).mockResolvedValue({} as never);
+    const response = await PUT(
+      putRequest(JSON.stringify({ alertType: 'DOCUMENT_EXPIRING', enabled: true, email: true })),
+      params
+    );
+    expect(response.status).toBe(200);
+    expect(updatePreference).toHaveBeenCalledWith('proj-1', 'user-1', {
+      alertType: 'DOCUMENT_EXPIRING',
+      enabled: true,
+      email: true,
+    });
+  });
+
+  it('passes slack channel boolean to updatePreference', async () => {
+    vi.mocked(updatePreference).mockResolvedValue({} as never);
+    await PUT(
+      putRequest(JSON.stringify({ alertType: 'STATUS_INCIDENT', enabled: true, slack: true })),
+      params
+    );
+    expect(updatePreference).toHaveBeenCalledWith('proj-1', 'user-1', {
+      alertType: 'STATUS_INCIDENT',
+      enabled: true,
+      slack: true,
+    });
+  });
+
+  it('passes teams and telegram channel booleans', async () => {
+    vi.mocked(updatePreference).mockResolvedValue({} as never);
+    await PUT(
+      putRequest(JSON.stringify({
+        alertType: 'STATUS_FINAL',
+        enabled: true,
+        teams: true,
+        telegram: false,
+      })),
+      params
+    );
+    expect(updatePreference).toHaveBeenCalledWith('proj-1', 'user-1', {
+      alertType: 'STATUS_FINAL',
+      enabled: true,
+      teams: true,
+      telegram: false,
+    });
+  });
+
+  it('passes all four channel booleans simultaneously', async () => {
+    vi.mocked(updatePreference).mockResolvedValue({} as never);
+    await PUT(
+      putRequest(JSON.stringify({
+        alertType: 'EVENT_UPCOMING',
+        enabled: true,
+        email: true,
+        slack: true,
+        teams: false,
+        telegram: true,
+      })),
+      params
+    );
+    expect(updatePreference).toHaveBeenCalledWith('proj-1', 'user-1', {
+      alertType: 'EVENT_UPCOMING',
+      enabled: true,
+      email: true,
+      slack: true,
+      teams: false,
+      telegram: true,
+    });
+  });
 });

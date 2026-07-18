@@ -1,6 +1,6 @@
 import type { Prisma } from '@mantemap/database';
 import prisma from '@mantemap/database';
-import type { Alert, NotificationPreference, PrismaClient, AlertType, AlertSeverity, AlertStatus } from '@mantemap/database';
+import type { Alert, NotificationPreference, PrismaClient, AlertType, AlertSeverity, AlertStatus, ProjectMember, User } from '@mantemap/database';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +30,10 @@ export type PaginationOptions = {
 export type UpdateNotificationPrefData = {
   alertType: AlertType;
   enabled: boolean;
+  email?: boolean;
+  slack?: boolean;
+  teams?: boolean;
+  telegram?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -188,6 +192,13 @@ export async function upsertNotificationPreference(
   data: UpdateNotificationPrefData,
   client: PrismaClient = prisma
 ): Promise<NotificationPreference> {
+  const channelFields = {
+    ...(data.email !== undefined ? { email: data.email } : {}),
+    ...(data.slack !== undefined ? { slack: data.slack } : {}),
+    ...(data.teams !== undefined ? { teams: data.teams } : {}),
+    ...(data.telegram !== undefined ? { telegram: data.telegram } : {}),
+  };
+
   return client.notificationPreference.upsert({
     where: {
       userId_projectId_alertType: {
@@ -201,9 +212,97 @@ export async function upsertNotificationPreference(
       projectId,
       alertType: data.alertType,
       enabled: data.enabled,
+      ...channelFields,
     },
     update: {
       enabled: data.enabled,
+      ...channelFields,
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Dispatcher helpers
+// ---------------------------------------------------------------------------
+
+export interface MemberWithPreferencesRow {
+  userId: string;
+  email: string;
+  name: string | null;
+  preferences: NotificationPreference[];
+}
+
+/**
+ * Query project members with their notification preferences for a given alert type.
+ * Used by NotificationDispatcher to match members with channel preferences.
+ */
+export async function getMembersWithPreferences(
+  projectId: string,
+  alertType: string,
+  client: PrismaClient = prisma,
+): Promise<MemberWithPreferencesRow[]> {
+  const members = await client.projectMember.findMany({
+    where: { projectId },
+    include: {
+      user: {
+        include: {
+          notificationPreferences: {
+            where: { alertType: alertType as AlertType, projectId },
+          },
+        },
+      },
+    },
+  });
+
+  return members.map((m) => ({
+    userId: m.user.id,
+    email: m.user.email,
+    name: m.user.name,
+    preferences: m.user.notificationPreferences,
+  }));
+}
+
+export interface AlertForDispatchRow {
+  id: string;
+  alertType: string;
+  severity: string;
+  title: string;
+  message: string | null;
+  metadata: Prisma.JsonValue | null;
+  projectId: string;
+}
+
+/**
+ * Get active alerts created in the last N minutes for a project.
+ * Used by NotificationDispatcher.dispatchForProject.
+ */
+export async function getRecentActiveAlerts(
+  projectId: string,
+  sinceMinutes: number,
+  client: PrismaClient = prisma,
+): Promise<AlertForDispatchRow[]> {
+  const since = new Date(Date.now() - sinceMinutes * 60_000);
+
+  return client.alert.findMany({
+    where: {
+      projectId,
+      status: 'ACTIVE',
+      createdAt: { gte: since },
+    },
+    orderBy: { createdAt: 'desc' },
+  }) as Promise<AlertForDispatchRow[]>;
+}
+
+/**
+ * Get project by ID (minimal wrapper for dispatcher).
+ * Returns null if not found.
+ */
+export async function getProjectById(
+  projectId: string,
+  client: PrismaClient = prisma,
+): Promise<{ id: string; name: string } | null> {
+  return client.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, name: true },
   });
 }

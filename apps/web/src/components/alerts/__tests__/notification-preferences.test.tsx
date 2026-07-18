@@ -62,6 +62,10 @@ const mockPreferences = [
     projectId: 'proj-1',
     alertType: 'DOCUMENT_EXPIRING',
     enabled: true,
+    email: false,
+    slack: true,
+    teams: false,
+    telegram: false,
     createdAt: '2026-07-18T10:00:00Z',
     updatedAt: '2026-07-18T10:00:00Z',
   },
@@ -71,6 +75,10 @@ const mockPreferences = [
     projectId: 'proj-1',
     alertType: 'STATUS_INCIDENT',
     enabled: true,
+    email: true,
+    slack: false,
+    teams: false,
+    telegram: false,
     createdAt: '2026-07-18T10:00:00Z',
     updatedAt: '2026-07-18T10:00:00Z',
   },
@@ -80,6 +88,10 @@ const mockPreferences = [
     projectId: 'proj-1',
     alertType: 'STATUS_BLOCKING',
     enabled: true,
+    email: false,
+    slack: false,
+    teams: true,
+    telegram: false,
     createdAt: '2026-07-18T10:00:00Z',
     updatedAt: '2026-07-18T10:00:00Z',
   },
@@ -89,6 +101,10 @@ const mockPreferences = [
     projectId: 'proj-1',
     alertType: 'STATUS_FINAL',
     enabled: false,
+    email: false,
+    slack: false,
+    teams: false,
+    telegram: false,
     createdAt: '2026-07-18T10:00:00Z',
     updatedAt: '2026-07-18T10:00:00Z',
   },
@@ -98,6 +114,10 @@ const mockPreferences = [
     projectId: 'proj-1',
     alertType: 'EVENT_UPCOMING',
     enabled: true,
+    email: false,
+    slack: false,
+    teams: false,
+    telegram: true,
     createdAt: '2026-07-18T10:00:00Z',
     updatedAt: '2026-07-18T10:00:00Z',
   },
@@ -144,8 +164,10 @@ describe('NotificationPreferences', () => {
     render(<NotificationPreferences projectId="proj-1" />, { wrapper: createWrapper() });
 
     // STATUS_FINAL is disabled (enabled: false)
+    // Each row has 5 switches: [in-app, email, slack, teams, telegram]
+    // STATUS_FINAL is row 3, in-app switch is at index 3*5+0 = 15
     const switches = screen.getAllByRole('switch');
-    const finalSwitch = switches[3]; // Fourth switch = STATUS_FINAL
+    const finalSwitch = switches[15];
     expect(finalSwitch).not.toBeChecked();
   });
 
@@ -178,8 +200,9 @@ describe('NotificationPreferences', () => {
     const user = userEvent.setup();
     render(<NotificationPreferences projectId="proj-1" />, { wrapper: createWrapper() });
 
+    // STATUS_FINAL is row 3, in-app switch is at index 3*5+0 = 15
     const switches = screen.getAllByRole('switch');
-    await user.click(switches[3]); // Toggle STATUS_FINAL on
+    await user.click(switches[15]); // Toggle STATUS_FINAL in-app on
 
     expect(mutate).toHaveBeenCalledWith({
       alertType: 'STATUS_FINAL',
@@ -209,5 +232,102 @@ describe('NotificationPreferences', () => {
     render(<NotificationPreferences projectId="proj-1" />, { wrapper: createWrapper() });
 
     expect(screen.getByText(/error/i)).toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Channel toggle tests (Phase 10 — External Notifications)
+  // -----------------------------------------------------------------------
+
+  it('renders channel toggle heading', () => {
+    render(<NotificationPreferences projectId="proj-1" />, { wrapper: createWrapper() });
+
+    expect(screen.getByText(/notification channels/i)).toBeInTheDocument();
+  });
+
+  it('renders channel toggle column headers', () => {
+    render(<NotificationPreferences projectId="proj-1" />, { wrapper: createWrapper() });
+
+    // Channel labels should be visible
+    expect(screen.getByText(/in-app/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/email/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/slack/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/teams/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/telegram/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('sends channel toggle update for slack', async () => {
+    const mutate = vi.fn();
+    mockUseUpdateNotificationPreference.mockReturnValue({
+      mutate,
+      isPending: false,
+    });
+
+    const user = userEvent.setup();
+    render(
+      <NotificationPreferences
+        projectId="proj-1"
+        channelConfigs={[
+          {
+            id: 'chan-1',
+            userId: 'user-1',
+            channelType: 'slack',
+            config: { webhookUrl: 'https://hooks.slack.com/test' },
+            enabled: true,
+            createdAt: '2026-07-18T10:00:00Z',
+            updatedAt: '2026-07-18T10:00:00Z',
+          },
+          {
+            id: 'chan-2',
+            userId: 'user-1',
+            channelType: 'email' as never,
+            config: {},
+            enabled: true,
+            createdAt: '2026-07-18T10:00:00Z',
+            updatedAt: '2026-07-18T10:00:00Z',
+          },
+        ]}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    // DOCUMENT_EXPIRING has slack: true. Click to toggle off.
+    // Row layout: [in-app, email, slack, teams, telegram] per row
+    // Row 0 (DOCUMENT_EXPIRING): slack switch is at index 2
+    const allSwitches = screen.getAllByRole('switch');
+    const slackSwitch = allSwitches[2]; // Row 0, col 2 (slack)
+    await user.click(slackSwitch);
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertType: 'DOCUMENT_EXPIRING',
+        slack: false,
+      })
+    );
+  });
+
+  it('sends channel toggle update for email', async () => {
+    const mutate = vi.fn();
+    mockUseUpdateNotificationPreference.mockReturnValue({
+      mutate,
+      isPending: false,
+    });
+
+    const user = userEvent.setup();
+    render(<NotificationPreferences projectId="proj-1" channelConfigs={[]} />, {
+      wrapper: createWrapper(),
+    });
+
+    // Email is always "configured" (uses SMTP env, not per-user config)
+    // Row 0 (DOCUMENT_EXPIRING): email switch is at index 1
+    const allSwitches = screen.getAllByRole('switch');
+    const emailSwitch = allSwitches[1]; // Row 0, col 1 (email)
+    await user.click(emailSwitch);
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertType: 'DOCUMENT_EXPIRING',
+        email: true,
+      })
+    );
   });
 });
