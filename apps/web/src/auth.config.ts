@@ -9,6 +9,7 @@ import type { NextAuthConfig } from 'next-auth';
  * Credentials provider and callbacks are added in auth.ts (Node runtime).
  */
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: '/login',
   },
