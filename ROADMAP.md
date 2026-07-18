@@ -176,21 +176,41 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
-## Fase 8 — Panel e informes 🔜 Siguiente
+## Fase 8 — Dashboard & Reports ✅
 
-**Objetivo**: Dashboard con indicadores y exportación.
+**Objetivo**: Dashboard con indicadores, timeline de actividad y exportación CSV.
 
 | Entregable | Estado | Criterio de aceptación |
 |-----------|--------|----------------------|
-| Dashboard principal | ⬜ Pendiente | KPIs, vencimientos, actividad |
-| Indicadores | ⬜ Pendiente | Ítems activos/inactivos, docs pendientes |
-| Exportación CSV | ⬜ Pendiente | Exportar listados filtrados |
+| Dashboard de proyecto | ✅ Completado | 6 grupos de KPIs: items, alerts, docs, events, locations, members |
+| Timeline de actividad | ✅ Completado | Actividad reciente: items, documentos, alertas, eventos |
+| Exportación CSV | ✅ Completado | Control de acceso, prevención de inyección de fórmulas |
+| Dashboard global | ✅ Completado | Resumen cross-project con tarjetas de resumen |
+| Primitivos UI | ✅ Completado | Card, Progress, Skeleton en packages/ui |
+| Tests | ✅ Completado | 177 tests (unit + component + integration) |
 
-**Dependencias**: Fases 3-7 completadas.
+**Dependencias**: Fases 3-7 completadas. **Tests**: 177. **Archivado**: 2026-07-18.
 
 ---
 
-## Fase 9 — Funciones avanzadas
+## Fase 9 — Notificaciones externas 🔜 Siguiente
+
+**Objetivo**: Conectar las alertas internas con canales de notificación reales.
+
+| Entregable | Estado | Criterio de aceptación |
+|-----------|--------|----------------------|
+| Email notifications | ⬜ Pendiente | SMTP / SendGrid / Resend integration |
+| Slack notifications | ⬜ Pendiente | Webhook por proyecto, mensajes formateados |
+| Teams notifications | ⬜ Pendiente | Webhook connector, tarjetas adaptativas |
+| Telegram notifications | ⬜ Pendiente | Bot token, mensajes por chat ID |
+| Canal preferences UI | ⬜ Pendiente | Extender NotificationPreferences con canales |
+| Templates | ⬜ Pendiente | Plantillas de notificación por tipo de alerta |
+
+**Dependencias**: Fase 7 (Alertas) completada.
+
+---
+
+## Fase 10 — Funciones avanzadas
 
 **Objetivo**: Funcionalidades extendidas.
 
@@ -230,4 +250,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-18. Phases 2-8 completas vía SDD: Item Types, Dynamic Fields, Statuses, Generated Forms, Items CRUD+UI, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications. ~1,800+ tests. Próxima fase: Dashboard & Reports. Production Prisma baseline (ADR-005) sigue siendo prerequisito para despliegue.
+> **Última actualización**: 2026-07-18. Fases 0-9 completas vía SDD: Auth, ItemTypes, DynamicFields, Statuses, Items, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications, Dashboard & Reports. ~1,800+ tests. ADR-005 resuelto: migración `20260718150342_add_all_phase_models` generada. Próxima fase: Notificaciones externas.

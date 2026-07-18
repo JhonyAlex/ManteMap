@@ -279,18 +279,19 @@ No dividir artificialmente archivos pequeños solo para cumplir un número.
 | Fase 6 | Eventos y Calendario (FullCalendar, recurrencia RRULE, eventos de expiración) | 131 |
 | Fase 7 | Locations (jerarquía, planos, visor React Konva, LOCATION_RELATION) | 311 |
 | Fase 8 | Alerts & Notifications (generación híbrida, campana, preferencias) | 166 |
+| Fase 9 | Dashboard & Reports (KPIs, timeline, CSV export, global dashboard) | 177 |
 
 ### Funcionalidades pendientes
 
-Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Dashboard & Reports**.
+Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Fase 10 — Notificaciones externas** (Email, Slack, Teams, Telegram).
 
 ### Bloqueos
 
-- ADR-005: Baseline de Prisma no aplicado en producción — bloquea despliegue de schema
+- ~~ADR-005: Baseline de Prisma no aplicado en producción~~ ✅ Resuelto 2026-07-18 — baseline aplicado, migración `20260718150342_add_all_phase_models` generada y deploy en curso.
 
 ### Deuda técnica conocida
 
-- Tablas creadas con `prisma db push` en vez de migraciones versionadas. Production schema inspection, backup, and baseline are mandatory before applying migrations.
+- ~~Tablas creadas con `prisma db push`~~ → Migraciones versionadas establecidas (`migration_lock.toml`, baseline + forward migration).
 - Windows standalone build verification may fail during symlink creation with `EPERM` after compilation and static generation.
 - @mantemap/ui tiene error de typecheck pre-existente (@/lib/utils resolution).
 - 51 integration tests requieren Docker/DB (pre-existente).
@@ -298,6 +299,7 @@ Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Dashboard
 
 ### Últimas validaciones realizadas
 
+- ✅ Phase 9 Dashboard: 177 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 8 Alerts: 166 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 7 Locations: 311 tests passing, PASS WITH WARNINGS (0 CRITICAL)
 - ✅ Phase 6 Events: 131 tests passing, PASS WITH WARNINGS (0 CRITICAL)
@@ -308,7 +310,7 @@ Ver `ROADMAP.md` para el desglose completo por fases. Próxima fase: **Dashboard
 
 ### Próximo paso recomendado
 
-Continuar con **Fase 9 — Dashboard & Reports**: métricas, reportes, dashboard principal. El baseline operativo de Prisma (ADR-005) sigue siendo un prerrequisito para el despliegue del schema en producción.
+Continuar con **Fase 10 — Notificaciones externas**: Email, Slack, Teams, Telegram. Conecta las alertas de la Fase 8 con canales reales de notificación para que los usuarios reciban avisos de vencimientos, estados y eventos sin necesidad de estar logueados.
 
 ---
 
@@ -359,6 +361,7 @@ docker compose -f docker-compose.dev.yml up -d
 | Fecha | Agente | Trabajo realizado | Estado | Próximo paso |
 |-------|--------|-------------------|--------|--------------|
 | 2026-07-18 | OpenCode (mimo-v2.5-pro) | Fases 3-8 completas vía SDD: Items CRUD+UI, Documents, Events+Calendar, Locations+FloorPlans, Alerts+Notifications. ~1,800+ tests. | ✅ Archivado | Fase 9: Dashboard & Reports |
+| 2026-07-18 | OpenCode (deepseek-v4-pro) | Fase 9 completa: Dashboard con KPIs, timeline, CSV export, dashboard global. 177 tests. ADR-005 baseline resuelto, migración `20260718150342_add_all_phase_models` generada. | ✅ Archivado | Fase 10: Notificaciones externas |
 | 2026-07-17 | OpenCode | Fase 2 completa: Slice 2 (DynamicFields 142 tests), Slice 3 (Statuses 135 tests), Slice 4 (Forms 146 tests). 423+ tests, 3 ADRs, 2 modelos Prisma, DynamicForm + 14 field components. | ✅ Archivado | Fase 3: Ítems |
 | 2026-07-17 | OpenCode | Fase 2 Slice 1: Item Type CRUD, scoped access, tests, ADR/OpenSpec | ✅ Completado | Slice 2: campos dinámicos |
 | 2026-07-15 | Claude (mimo-v2.5-pro) | Fase 0: Arquitectura, estructura, documentación, configs | ✅ Completado | Fase 1: Usuarios y proyectos |

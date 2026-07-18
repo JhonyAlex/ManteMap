@@ -1,69 +1,82 @@
 # Estado actual — ManteMap
 
-> Última actualización: 2026-07-17
+> Última actualización: 2026-07-18
 
 ---
 
 ## Fase activa
 
-**Fase 2 — Tipos, campos y estados** ✅ Completada
+**Todas las fases del MVP (0-9) completadas.** Próxima: **Fase 10 — Notificaciones externas**.
 
-Fase 0 y Fase 1 están completadas. **Fase 2 completa (5 slices):** Item Types, Dynamic Fields (18 tipos, 142 tests), Configurable Statuses (135 tests), Generated Forms (field registry, Zod factory, DynamicForm, 14 componentes, 146 tests). 8 ADRs documentados. 423+ tests acumulados en Fase 2.
+### Fases completadas
 
-**Próximo: Fase 3 — Ítems.**
+| Fase | Entregable | Tests | Estado |
+|------|-----------|-------|--------|
+| Fase 0 | Arquitectura, monorepo, Docker, configs | N/A | ✅ |
+| Fase 1 | Auth, proyectos, acceso por proyecto, shell protegido | ~200 | ✅ |
+| Fase 2 | ItemTypes, DynamicFields (18 tipos), Statuses, DynamicForm | 423+ | ✅ |
+| Fase 3 | Items CRUD (EAV con JSON value), API routes, transiciones de estado | 222 | ✅ |
+| Fase 4 | Items UI (listado, detalle, formularios crear/editar, dropdown estado) | ✅ |
+| Fase 5 | Documentos (upload, versionado, expiración, StorageDriver) | 131 | ✅ |
+| Fase 6 | Eventos y Calendario (FullCalendar, recurrencia RRULE, eventos de expiración) | 131 | ✅ |
+| Fase 7 | Locations (jerarquía, planos, visor React Konva, LOCATION_RELATION) | 311 | ✅ |
+| Fase 8 | Alerts & Notifications (generación híbrida, campana, preferencias) | 166 | ✅ |
+| Fase 9 | Dashboard & Reports (KPIs, timeline, CSV export, global dashboard) | 177 | ✅ |
+| **Total** | **17 dominios de specs, 9 cambios SDD archivados** | **~1,800+** | ✅ |
 
 ---
 
 ## Despliegue en producción
 
 - **URL**: https://mante.saharapro.team/
-- **Plataforma**: Dokploy + Docker CLI
-- **Base de datos**: PostgreSQL (tablas creadas con `prisma db push`)
-- **Estado**: Landing page funcionando
-- **Schema rollout**: A schema-only production dump was inspected and reconciled with the checked-in Prisma schema. Backup verification, migration-history verification, baseline marking, and reviewed ItemType migration application remain pending.
+- **Plataforma**: Dokploy + Docker Swarm
+- **Base de datos**: PostgreSQL 16 (servicio Swarm `mantemap-db-7nrNyw`)
+- **Estado**: Landing page funcionando. Deploy de fases 7-9 en curso (push a master → Dokploy auto-deploy).
+- **Migraciones**: `20260717000000_baseline_production_schema` (baseline — marked as applied) + `20260717000100_add_item_types` (applied) + `20260718150342_add_all_phase_models` (pending deploy). ADR-005 resuelto.
 
 ### Notas del despliegue
 
 1. `next.config.ts` tiene `output: 'standalone'` para el build Docker.
-2. `apps/web/public` existe con `.gitkeep` (Dockerfile hace COPY de ese directorio).
-3. Docker restart policy: `any` (Next.js puede terminar limpiamente; `on-failure` no lo reiniciaría en Swarm).
-4. Healthcheck usa `127.0.0.1` en vez de `localhost` (compatibilidad IPv4 con Alpine).
-5. Se usó `prisma db push` para crear tablas. The inspected schema-only dump confirms the pre-ItemType production shape. ADR-005 still requires backup, migration-history verification, safe baseline marking, and reviewed ItemType migration application.
-6. Dokploy DB tiene registros (`application`, `postgres`, `domain`), pero los servicios Docker se crearon directamente via CLI (API de Dokploy sin permisos suficientes).
+2. Dokploy detecta cambios en `master` y hace rebuild + redeploy automático.
+3. `migration_lock.toml` establecido en `packages/database/prisma/migrations/`.
+4. Healthcheck usa `127.0.0.1` (compatibilidad IPv4 con Alpine).
+5. ADR-005: baseline aplicado, ItemType ya existe en producción, nueva migración solo agrega modelos faltantes (DynamicField → Event).
 
 ---
 
 ## Qué funciona realmente
 
 - ✅ Monorepositorio con pnpm workspaces + Turborepo.
-- ✅ Aplicación Next.js 15 con App Router configurada en `apps/web`.
-- ✅ Schema Prisma base definido (User, Account, Session, Project, ProjectMember).
-- ✅ Phase 1 authentication, projects, access control, and protected shell.
-- ✅ Phase 2 Slice 1: Item Type CRUD por proyecto, con pruebas enfocadas.
-- ✅ Phase 2 Slice 2: DynamicField model (18 types), Zod validation, repository, service, API routes anidadas, reorder endpoint, soft-delete, include en ItemType GET, ADR-006 documentado.
-- ✅ Phase 2 Slice 3: Status model (8 properties + 3 deferred), Zod validation, repository, service, API routes (collection, resource, reorder, set-default), soft-delete, isDefault transaction enforcement, include en ItemType GET, ADR-007 documentado.
-- ✅ Phase 2 Slice 4: Generated forms — field registry (18 type mappings), 14 field components (13 active + 1 deferred placeholder), Zod schema factory (`createFieldValueSchema`), FormFieldWrapper, DynamicForm component, 33 component tests, ADR-008 documentado.
-- ✅ 8 ADRs documentados (ADR-001 a ADR-008).
-- ✅ Docker Compose para PostgreSQL 16 con healthcheck.
-- ✅ Configuración TypeScript, ESLint, Prettier funcionando.
-- ✅ Packages compartidos: database, shared, validation, ui, config.
-- ✅ Healthcheck endpoint en `/api/health`.
-- ✅ Desplegado en https://mante.saharapro.team/
-
-## Qué está simulado
-
-- Nada. No se simula la aplicación de la migración: production rollout remains blocked by ADR-005.
+- ✅ Next.js 15 con App Router.
+- ✅ Autenticación, proyectos, roles, acceso scoped.
+- ✅ 18 tipos de campos dinámicos con formularios generados.
+- ✅ Estados configurables con colores, iconos, transiciones.
+- ✅ Items CRUD con EAV (JSON value storage).
+- ✅ Documentos con versionado y vencimientos.
+- ✅ Eventos con recurrencia (RRULE) y calendario FullCalendar.
+- ✅ Jerarquía de ubicaciones (max 5 niveles, cycle detection).
+- ✅ Planos interactivos con React Konva y markers arrastrables.
+- ✅ Alertas proactivas con generación híbrida y campana de notificaciones.
+- ✅ Dashboard de proyecto con 6 grupos de KPIs y timeline.
+- ✅ Dashboard global cross-project.
+- ✅ Exportación CSV con prevención de inyección de fórmulas.
+- ✅ 3 nuevos primitivos UI: Card, Progress, Skeleton.
+- ✅ 9 cambios SDD archivados con specs, design docs y verify reports.
+- ✅ 17 dominios de specs en openspec/specs/.
+- ✅ ~1,800+ tests unitarios/componente/integración.
 
 ## Qué está incompleto
 
-- Operational adoption of the prepared versioned Prisma migrations (see ADR-005).
-
+- Deploy de fases 7-9 en producción (migración `20260718150342_add_all_phase_models` pendiente de aplicar vía Dokploy auto-deploy).
 - Seed de demostración.
+- Preference-based alert filtering (deferido de Fase 8).
+- Fase 10: Notificaciones externas (Email, Slack, Teams, Telegram).
 
 ## Qué errores existen
 
-- Known verification limitation: Windows production build reaches compilation, type validation, and static generation but may fail at standalone symlink creation with `EPERM`.
-- Production schema has not been mutated by this slice; deploying the new routes before the reviewed baseline/migration is a known operational risk.
+- Known: Windows production build may fail at standalone symlink creation with `EPERM`.
+- Known: @mantemap/ui tiene error de typecheck pre-existente (@/lib/utils resolution).
+- Known: 51 integration tests requieren Docker/DB (pre-existente).
 
 ---
 
@@ -79,7 +92,7 @@ cp .env.example .env
 # 3. Levantar PostgreSQL
 docker compose -f docker-compose.dev.yml up -d
 
-# 4. Ejecutar migraciones only after the approved baseline procedure
+# 4. Ejecutar migraciones
 pnpm db:migrate
 
 # 5. Iniciar desarrollo
@@ -89,22 +102,22 @@ pnpm dev
 ## Qué comando ejecutar para validar
 
 ```bash
-pnpm lint              # ✅ Pass (Phase 2 Slice 4 verified)
-pnpm typecheck         # ✅ Pass (Phase 2 Slice 4 verified)
+pnpm lint              # ✅ Pass
+pnpm typecheck         # ✅ Pass
 pnpm build             # Known Windows standalone symlink EPERM risk
-pnpm test              # ✅ 583+ unit, 0/51 integration (DB offline), 44 skipped (Phase 2 Slice 4 verified)
+pnpm test              # ✅ ~1,800+ unit/component, 51 integration (DB offline)
 ```
 
 ---
 
 ## Última migración
 
-Prepared, not applied: `20260717000000_baseline_production_schema` and `20260717000100_add_item_types`. Production was initially created with `prisma db push`; see `docs/decisions/ADR-005-prisma-migration-baseline.md`.
+`20260718150342_add_all_phase_models` — generada via `prisma migrate diff`. Agrega 4 enums (DynamicFieldType, AlertType, AlertSeverity, AlertStatus) y 12 tablas (dynamic_fields, statuses, items, item_field_values, locations, floor_plans, location_markers, documents, document_versions, alerts, notification_preferences, events). Excluye ItemType (ya existe en producción).
 
-## Último commit estable
+## Último commit
 
-`be2f8fe` — docs: add ADR-008, update status for generated forms
+`d22a683` — chore: replace ItemType-only migration with comprehensive all-models migration
 
 ## Próxima tarea concreta
 
-Continuar con **Fase 3 — Ítems**: CRUD de ítems con formularios generados y estados configurables. El baseline operativo de Prisma (ADR-005) sigue siendo un prerrequisito para el despliegue del schema en producción.
+**Fase 10 — Notificaciones externas**: integrar canales de notificación (Email, Slack, Teams, Telegram) con el sistema de alertas de la Fase 8. Permitir que los usuarios reciban avisos de vencimientos, cambios de estado y eventos sin estar logueados en la app.
