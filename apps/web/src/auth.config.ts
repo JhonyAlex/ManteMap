@@ -30,6 +30,7 @@ export const authConfig = {
 
       if (isOnDashboard || isOnProjects) {
         if (isLoggedIn) return true;
+        console.log('[middleware] Blocked unauthenticated access to:', nextUrl.pathname);
         return false; // Redirect unauthenticated users to login
       }
 

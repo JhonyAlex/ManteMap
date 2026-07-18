@@ -59,12 +59,19 @@ export default function LoginPage() {
 
       if (result?.error) {
         setErrors({ general: 'Invalid email or password. Please try again.' });
-      } else if (result?.url) {
-        router.push(result.url);
-      } else {
-        // Successful sign-in — redirect to dashboard
-        router.push('/dashboard');
+        return;
       }
+
+      if (!result?.ok) {
+        setErrors({ general: 'Sign in failed. Please try again.' });
+        return;
+      }
+
+      // Force a full page reload so the browser picks up the session cookie.
+      // router.push() does a client-side navigation that may not include
+      // the newly-set cookie on the first request, causing middleware to
+      // bounce back to /login.
+      window.location.href = result.url ?? '/dashboard';
     } catch {
       setErrors({ general: 'An unexpected error occurred. Please try again.' });
     } finally {
