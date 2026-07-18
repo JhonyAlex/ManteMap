@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     }
 
     await registerUser(parsed.data);
+    console.log('[register] User created successfully:', parsed.data.email);
     return registrationAccepted();
   } catch (error: unknown) {
     if (error instanceof ConflictError) {

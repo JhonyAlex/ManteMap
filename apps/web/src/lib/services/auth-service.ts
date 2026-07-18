@@ -36,9 +36,17 @@ export async function authenticateUser(
 
   const user = await findUserByEmail(normalizedEmail);
 
+  if (!user) {
+    console.error('[auth-service] No user found for email:', normalizedEmail);
+  }
+
   // Always compare against a hash — real or dummy — to prevent timing leaks
   const hashToCompare = user?.passwordHash ?? DUMMY_HASH;
   const passwordMatches = await bcrypt.compare(password, hashToCompare);
+
+  if (!passwordMatches) {
+    console.error('[auth-service] Password mismatch for:', normalizedEmail, '(user exists:', !!user, ')');
+  }
 
   if (!user || !passwordMatches) {
     return null;
@@ -46,6 +54,7 @@ export async function authenticateUser(
 
   // Inactive or suspended users must not receive a session
   if (user.status !== 'ACTIVE') {
+    console.error('[auth-service] User not ACTIVE:', normalizedEmail, 'status:', user.status);
     return null;
   }
 

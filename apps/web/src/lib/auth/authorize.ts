@@ -18,16 +18,20 @@ export async function authorizeCredentials(
 ): Promise<{ id: string; email: string; name: string | null; role: string } | null> {
   const parsed = loginUserSchema.safeParse(credentials);
   if (!parsed.success) {
+    console.error('[authorize] Zod validation failed:', parsed.error.flatten());
     return null;
   }
 
   const { email, password } = parsed.data;
+  console.log('[authorize] Attempting login for:', email);
   const user: AuthUser | null = await authenticateUser(email, password);
 
   if (!user) {
+    console.error('[authorize] authenticateUser returned null for:', email);
     return null;
   }
 
+  console.log('[authorize] Login successful for:', email);
   return {
     id: user.id,
     email: user.email,
