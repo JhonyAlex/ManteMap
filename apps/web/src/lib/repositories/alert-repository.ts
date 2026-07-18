@@ -229,7 +229,7 @@ export interface MemberWithPreferencesRow {
   userId: string;
   email: string;
   name: string | null;
-  preferences: NotificationPreference[];
+  preferences: (NotificationPreference & { webhook: boolean })[];
 }
 
 /**
