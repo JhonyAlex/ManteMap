@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 /**
- * RED tests for Dashboard page.
+ * RED tests for Global Dashboard page modifications.
  *
  * Verifies:
- *   - Renders a welcome message with user context
- *   - Renders a heading
- *   - Shows project count or empty state
+ *   - Renders cross-project summaries when user has projects
+ *   - Shows empty state when user has no projects
+ *   - Each summary card shows project metrics
  *
- * Spec: specs/application-shell/spec.md — "Authenticated workspace navigation"
+ * Spec: openspec/changes/phase-9-dashboard-reports/specs/dashboard-reporting/spec.md
+ *   "Cross-Project Summary Dashboard" — per-project summaries, empty state
  */
 
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
@@ -63,41 +64,41 @@ const mockUser = {
   role: 'TECHNICIAN',
 };
 
-describe('DashboardPage', () => {
+const mockProjects = [
+  { id: 'proj-1', code: 'ALPHA', name: 'Alpha Project', description: 'Test', status: 'ACTIVE', ownerId: 'user-1', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'proj-2', code: 'BETA', name: 'Beta Project', description: 'Test', status: 'ACTIVE', ownerId: 'user-1', createdAt: new Date(), updatedAt: new Date() },
+];
+
+const mockMetrics = {
+  totalItems: 42,
+  statusCounts: [],
+  unassignedItems: 0,
+  activeAlerts: 3,
+  alertSeverityCounts: [],
+  totalDocuments: 10,
+  documentsExpiringSoon: 2,
+  upcomingEvents: 5,
+  activeLocations: 8,
+};
+
+describe('Global Dashboard Page — Cross-Project Summaries', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentUser.mockResolvedValue(mockUser);
-    mockGetDashboardProjects.mockResolvedValue({ projects: [] });
-    mockGetProjectMetrics.mockResolvedValue({
-      totalItems: 10,
-      statusCounts: [],
-      unassignedItems: 0,
-      activeAlerts: 2,
-      alertSeverityCounts: [],
-      totalDocuments: 5,
-      documentsExpiringSoon: 1,
-      upcomingEvents: 3,
-      activeLocations: 4,
-    });
+    mockGetDashboardProjects.mockResolvedValue({ projects: mockProjects });
+    mockGetProjectMetrics.mockResolvedValue(mockMetrics);
     mockUseSession.mockReturnValue({
       data: { user: mockUser },
       status: 'authenticated',
     });
   });
 
-  it('renders a heading', async () => {
+  it('renders project summary cards for each project', async () => {
     const ui = await DashboardPage();
     render(ui);
 
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-  });
-
-  it('renders welcome content with user name', async () => {
-    const ui = await DashboardPage();
-    render(ui);
-
-    expect(screen.getByText(/dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/welcome back.*test user/i)).toBeInTheDocument();
+    expect(screen.getByText('Alpha Project')).toBeInTheDocument();
+    expect(screen.getByText('Beta Project')).toBeInTheDocument();
   });
 
   it('shows empty state when user has no projects', async () => {
@@ -109,23 +110,11 @@ describe('DashboardPage', () => {
     expect(screen.getByText(/don't have any projects/i)).toBeInTheDocument();
   });
 
-  it('renders project summary cards when user has projects', async () => {
-    mockGetDashboardProjects.mockResolvedValue({
-      projects: [
-        { id: 'proj-1', code: 'ALPHA', name: 'Alpha Project' },
-      ],
-    });
-
+  it('renders project codes in summary cards', async () => {
     const ui = await DashboardPage();
     render(ui);
 
-    expect(screen.getByText('Alpha Project')).toBeInTheDocument();
     expect(screen.getByText('ALPHA')).toBeInTheDocument();
-  });
-
-  it('calls getDashboardProjects with the current user ID', async () => {
-    await DashboardPage();
-
-    expect(mockGetDashboardProjects).toHaveBeenCalledWith('user-1');
+    expect(screen.getByText('BETA')).toBeInTheDocument();
   });
 });

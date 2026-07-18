@@ -17,6 +17,7 @@ export async function GET(
     const url = new URL(request.url);
     const itemTypeId = url.searchParams.get('itemTypeId');
     const statusId = url.searchParams.get('statusId') ?? undefined;
+    const locationId = url.searchParams.get('locationId') ?? undefined;
     const search = url.searchParams.get('search') ?? undefined;
     const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : undefined;
     const pageSize = url.searchParams.get('pageSize') ? Number(url.searchParams.get('pageSize')) : undefined;
@@ -27,7 +28,7 @@ export async function GET(
 
     const result = await listItems(
       projectId,
-      { itemTypeId, statusId, search, page, pageSize },
+      { itemTypeId, statusId, locationId, search, page, pageSize },
       auth.user.id
     );
     return NextResponse.json({ data: result.items } satisfies ApiResponse);

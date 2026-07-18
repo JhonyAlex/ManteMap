@@ -67,6 +67,7 @@ export default async function ItemDetailPage({
     slug: item.slug,
     itemTypeId: item.itemTypeId,
     statusId: item.statusId,
+    locationId: item.locationId ?? null,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
     status: item.status

@@ -1,17 +1,54 @@
 import React from 'react';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getDashboardProjects } from '@/lib/services/dashboard-service';
+import { getProjectMetrics } from '@/lib/services/metrics-service';
+import { ProjectSummaryCard } from '@/components/dashboard/project-summary-card';
 import { redirect } from 'next/navigation';
 
 /**
  * Dashboard page — Server Component.
  *
- * Shows a welcome message and summary of the user's accessible projects.
+ * Shows a welcome message and summary of the user's accessible projects
+ * with cross-project metric counts (items, alerts, expiring documents).
  * Unauthenticated users are redirected by middleware + layout auth check.
  *
- * Spec: specs/application-shell/spec.md — "Authenticated workspace navigation"
- * Design: design.md — "Server Components by default"
+ * Spec: openspec/changes/phase-9-dashboard-reports/specs/dashboard-reporting/spec.md
+ *   "Cross-Project Summary Dashboard" — per-project summaries
+ * Design: openspec/changes/phase-9-dashboard-reports/design.md
+ *   "Server Components call services directly"
  */
+
+interface ProjectWithMetrics {
+  id: string;
+  code: string;
+  name: string;
+  totalItems: number;
+  activeAlerts: number;
+  documentsExpiringSoon: number;
+}
+
+async function fetchProjectMetrics(
+  projects: { id: string; code: string; name: string }[],
+  userId: string
+): Promise<ProjectWithMetrics[]> {
+  const results = await Promise.allSettled(
+    projects.map(async (project) => {
+      const metrics = await getProjectMetrics(project.id, userId);
+      return {
+        id: project.id,
+        code: project.code,
+        name: project.name,
+        totalItems: metrics.totalItems,
+        activeAlerts: metrics.activeAlerts,
+        documentsExpiringSoon: metrics.documentsExpiringSoon,
+      };
+    })
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<ProjectWithMetrics> => r.status === 'fulfilled')
+    .map((r) => r.value);
+}
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -21,6 +58,10 @@ export default async function DashboardPage() {
   }
 
   const { projects } = await getDashboardProjects(user.id);
+
+  // Fetch metrics for all projects concurrently
+  const projectsWithMetrics =
+    projects.length > 0 ? await fetchProjectMetrics(projects, user.id) : [];
 
   return (
     <div>
@@ -38,20 +79,16 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <a
+          {projectsWithMetrics.map((project) => (
+            <ProjectSummaryCard
               key={project.id}
-              href={`/projects/${project.id}`}
-              className="block rounded-lg border p-4 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              <h2 className="font-semibold">{project.name}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{project.code}</p>
-              {project.description && (
-                <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                  {project.description}
-                </p>
-              )}
-            </a>
+              projectId={project.id}
+              projectCode={project.code}
+              projectName={project.name}
+              totalItems={project.totalItems}
+              activeAlerts={project.activeAlerts}
+              documentsExpiringSoon={project.documentsExpiringSoon}
+            />
           ))}
         </div>
       )}

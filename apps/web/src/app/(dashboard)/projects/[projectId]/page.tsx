@@ -43,17 +43,9 @@ export default async function ProjectPage({
 
   return (
     <div>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {project.code}
-          </span>
-        </div>
-        {project.description && (
-          <p className="mt-2 text-muted-foreground">{project.description}</p>
-        )}
-      </div>
+      {project.description && (
+        <p className="mb-6 text-muted-foreground">{project.description}</p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border p-4">
