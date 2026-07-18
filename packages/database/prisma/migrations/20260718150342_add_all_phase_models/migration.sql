@@ -2,9 +2,6 @@
 CREATE TYPE "DynamicFieldType" AS ENUM ('SHORT_TEXT', 'LONG_TEXT', 'NUMBER', 'DECIMAL', 'CURRENCY', 'BOOLEAN', 'DATE', 'DATETIME', 'SELECT', 'MULTI_SELECT', 'URL', 'EMAIL', 'PHONE', 'FILE', 'IMAGE', 'ITEM_RELATION', 'LOCATION_RELATION', 'USER_RELATION');
 
 -- CreateEnum
-CREATE TYPE "ItemTypeStatus" AS ENUM ('ACTIVE', 'ARCHIVED');
-
--- CreateEnum
 CREATE TYPE "AlertType" AS ENUM ('DOCUMENT_EXPIRING', 'STATUS_INCIDENT', 'STATUS_BLOCKING', 'STATUS_FINAL', 'EVENT_UPCOMING');
 
 -- CreateEnum
@@ -12,22 +9,6 @@ CREATE TYPE "AlertSeverity" AS ENUM ('CRITICAL', 'WARNING', 'INFO');
 
 -- CreateEnum
 CREATE TYPE "AlertStatus" AS ENUM ('ACTIVE', 'ACKNOWLEDGED', 'DISMISSED');
-
--- CreateTable
-CREATE TABLE "item_types" (
-    "id" TEXT NOT NULL,
-    "projectId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "slug" TEXT NOT NULL,
-    "description" TEXT,
-    "icon" TEXT,
-    "color" TEXT,
-    "status" "ItemTypeStatus" NOT NULL DEFAULT 'ACTIVE',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "item_types_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateTable
 CREATE TABLE "dynamic_fields" (
@@ -228,15 +209,6 @@ CREATE TABLE "events" (
 );
 
 -- CreateIndex
-CREATE INDEX "item_types_projectId_status_idx" ON "item_types"("projectId", "status");
-
--- CreateIndex
-CREATE INDEX "item_types_projectId_name_idx" ON "item_types"("projectId", "name");
-
--- CreateIndex
-CREATE UNIQUE INDEX "item_types_projectId_slug_key" ON "item_types"("projectId", "slug");
-
--- CreateIndex
 CREATE INDEX "dynamic_fields_itemTypeId_order_idx" ON "dynamic_fields"("itemTypeId", "order");
 
 -- CreateIndex
@@ -319,9 +291,6 @@ CREATE INDEX "events_projectId_endAt_idx" ON "events"("projectId", "endAt");
 
 -- CreateIndex
 CREATE INDEX "events_itemId_idx" ON "events"("itemId");
-
--- AddForeignKey
-ALTER TABLE "item_types" ADD CONSTRAINT "item_types_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "dynamic_fields" ADD CONSTRAINT "dynamic_fields_itemTypeId_fkey" FOREIGN KEY ("itemTypeId") REFERENCES "item_types"("id") ON DELETE CASCADE ON UPDATE CASCADE;
