@@ -51,9 +51,11 @@ export default function NewProjectPage() {
       });
 
       if (res.status === 201) {
-        const data = await res.json();
-        router.push(`/projects/${data.project.id}`);
+        const body = await res.json();
+        router.push(`/projects/${body.data.id}`);
         router.refresh();
+        return;
+      }
         return;
       }
 
