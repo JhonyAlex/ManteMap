@@ -79,6 +79,28 @@ export function validateCoordinates(x: number, y: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect MIME type from file extension.
+ * Used for serving floor plan images via the API endpoint.
+ */
+const MIME_MAP: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+};
+
+export function detectMimeType(fileName: string): string {
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot === -1) return 'application/octet-stream';
+  const ext = fileName.slice(lastDot).toLowerCase();
+  return MIME_MAP[ext] ?? 'application/octet-stream';
+}
+
+// ---------------------------------------------------------------------------
 // FloorPlan service functions
 // ---------------------------------------------------------------------------
 
@@ -132,6 +154,29 @@ export async function getFloorPlan(
   }
 
   return { floorPlan };
+}
+
+export async function getFloorPlanImage(
+  projectId: string,
+  floorPlanId: string,
+  userId: string
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  await requireProjectMember(projectId, userId);
+
+  const floorPlan = await findFloorPlanById(floorPlanId);
+  if (!floorPlan) {
+    throw new NotFoundError('FloorPlan', floorPlanId);
+  }
+
+  const storageDriver = getStorageDriver();
+  try {
+    const buffer = await storageDriver.readFile(floorPlan.imageUrl);
+    const mimeType = detectMimeType(floorPlan.imageUrl);
+    return { buffer, mimeType };
+  } catch (error) {
+    // If file is missing on disk, still return 404
+    throw new NotFoundError('Floor plan image', floorPlanId);
+  }
 }
 
 export async function listFloorPlans(

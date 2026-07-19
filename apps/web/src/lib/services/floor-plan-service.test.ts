@@ -51,6 +51,7 @@ vi.mock('@/lib/services/project-access-service', () => ({
 import {
   uploadFloorPlan,
   getFloorPlan,
+  getFloorPlanImage,
   listFloorPlans,
   removeFloorPlan,
   addMarker,
@@ -60,6 +61,7 @@ import {
   validateFileExtension,
   validateFileSize,
   validateCoordinates,
+  detectMimeType,
 } from './floor-plan-service';
 import * as repository from '@/lib/repositories/floor-plan-repository';
 import * as access from '@/lib/services/project-access-service';
@@ -521,5 +523,118 @@ describe('FloorPlanService removeMarker', () => {
       removeMarker(PROJECT_ID, 'clnonexistentxxxxxxx', MARKER_ID, OWNER_ID)
     ).rejects.toThrow(NotFoundError);
     expect(repository.deleteMarker).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// detectMimeType — pure utility
+// ---------------------------------------------------------------------------
+
+describe('detectMimeType', () => {
+  it('returns image/png for .png files', () => {
+    expect(detectMimeType('floor-plan.png')).toBe('image/png');
+  });
+
+  it('returns image/jpeg for .jpg files', () => {
+    expect(detectMimeType('photo.jpg')).toBe('image/jpeg');
+  });
+
+  it('returns image/jpeg for .jpeg files', () => {
+    expect(detectMimeType('photo.jpeg')).toBe('image/jpeg');
+  });
+
+  it('returns image/svg+xml for .svg files', () => {
+    expect(detectMimeType('diagram.svg')).toBe('image/svg+xml');
+  });
+
+  it('returns application/octet-stream for unknown extensions', () => {
+    expect(detectMimeType('file.bin')).toBe('application/octet-stream');
+  });
+
+  it('is case-insensitive (uppercase extension)', () => {
+    expect(detectMimeType('plan.PNG')).toBe('image/png');
+    expect(detectMimeType('photo.JPG')).toBe('image/jpeg');
+  });
+
+  it('returns application/octet-stream for files without extension', () => {
+    expect(detectMimeType('readme')).toBe('application/octet-stream');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getFloorPlanImage
+// ---------------------------------------------------------------------------
+
+describe('FloorPlanService getFloorPlanImage', () => {
+  const storagePlanPath = 'LOC001/1234-floor.png';
+  const imageBuffer = Buffer.from('fake-image-data');
+
+  beforeEach(() => {
+    mockStorageDriver.readFile.mockResolvedValue(imageBuffer);
+  });
+
+  it('requires member access', async () => {
+    vi.mocked(access.requireProjectMember).mockRejectedValue(
+      new ValidationError('Not member')
+    );
+
+    await expect(
+      getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)
+    ).rejects.toThrow();
+  });
+
+  it('returns buffer and correct PNG mimeType', async () => {
+    vi.mocked(repository.findFloorPlanById).mockResolvedValue({
+      ...floorPlanRecord,
+      imageUrl: storagePlanPath,
+    } as never);
+
+    const result = await getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
+
+    expect(access.requireProjectMember).toHaveBeenCalledWith(PROJECT_ID, MEMBER_ID);
+    expect(repository.findFloorPlanById).toHaveBeenCalledWith(FLOOR_PLAN_ID);
+    expect(mockStorageDriver.readFile).toHaveBeenCalledWith(storagePlanPath);
+    expect(result.buffer).toEqual(imageBuffer);
+    expect(result.mimeType).toBe('image/png');
+  });
+
+  it('returns correct mimeType for JPG', async () => {
+    vi.mocked(repository.findFloorPlanById).mockResolvedValue({
+      ...floorPlanRecord,
+      imageUrl: 'LOC001/image.jpg',
+    } as never);
+
+    const result = await getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
+
+    expect(result.mimeType).toBe('image/jpeg');
+  });
+
+  it('returns correct mimeType for SVG', async () => {
+    vi.mocked(repository.findFloorPlanById).mockResolvedValue({
+      ...floorPlanRecord,
+      imageUrl: 'LOC001/diagram.svg',
+    } as never);
+
+    const result = await getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
+
+    expect(result.mimeType).toBe('image/svg+xml');
+  });
+
+  it('throws NotFoundError when floor plan does not exist', async () => {
+    vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
+
+    await expect(
+      getFloorPlanImage(PROJECT_ID, 'clnonexistentxxxxxxx', MEMBER_ID)
+    ).rejects.toThrow(NotFoundError);
+    expect(mockStorageDriver.readFile).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundError when image file is missing on disk', async () => {
+    vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
+    mockStorageDriver.readFile.mockRejectedValue(new Error('ENOENT: no such file'));
+
+    await expect(
+      getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)
+    ).rejects.toThrow(NotFoundError);
   });
 });
