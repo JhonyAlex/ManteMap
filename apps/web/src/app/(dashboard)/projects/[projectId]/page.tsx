@@ -27,6 +27,16 @@ const quickLinks = [
     description: 'Manage assets, documents, and field values.',
   },
   {
+    href: (id: string) => `/projects/${id}/locations`,
+    label: 'Locations',
+    description: 'Manage hierarchical locations (buildings, floors, rooms).',
+  },
+  {
+    href: (id: string) => `/projects/${id}/floor-plans`,
+    label: 'Floor Plans',
+    description: 'Upload and manage interactive floor plans with markers.',
+  },
+  {
     href: (id: string) => `/projects/${id}/calendar`,
     label: 'Calendar',
     description: 'Schedule events with recurrence and expiration tracking.',
@@ -88,7 +98,7 @@ export default async function ProjectPage({ params }: ProjectHubPageProps) {
       )}
 
       <h2 className="mb-3 text-lg font-semibold">Quick Actions</h2>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {quickLinks.map((link) => (
           <Link
             key={link.label}

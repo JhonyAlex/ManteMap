@@ -102,7 +102,7 @@ export function ItemList({
 
   return (
     <div className="space-y-4">
-      {/* Search */}
+      {/* Toolbar */}
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -111,17 +111,31 @@ export function ItemList({
           onChange={handleSearchChange}
           className="h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <QRSheet
-          projectId={projectId}
-          itemIds={items?.map((item) => item.id) ?? []}
-          disabled={!items || items.length === 0}
-        />
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/projects/${projectId}/items/new?itemTypeId=${itemTypeId}`}
+            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            New Item
+          </Link>
+          <QRSheet
+            projectId={projectId}
+            itemIds={items?.map((item) => item.id) ?? []}
+            disabled={!items || items.length === 0}
+          />
+        </div>
       </div>
 
       {/* Table */}
       {!items || items.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">No items found.</p>
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="mb-3 text-muted-foreground">No items found.</p>
+          <Link
+            href={`/projects/${projectId}/items/new?itemTypeId=${itemTypeId}`}
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Create First Item
+          </Link>
         </div>
       ) : (
         <>

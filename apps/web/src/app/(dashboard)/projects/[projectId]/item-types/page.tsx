@@ -265,12 +265,26 @@ export default function ItemTypesPage({ params }: ItemTypesPageProps) {
                   <p className="text-xs text-muted-foreground">{it.slug}</p>
                 </div>
               </div>
-              <Link
-                href={`/projects/${projectId}/items?itemTypeId=${it.id}`}
-                className="text-sm text-primary hover:underline"
-              >
-                View Items
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/projects/${projectId}/item-types/${it.id}/fields`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Fields
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/item-types/${it.id}/statuses`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Statuses
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/items?itemTypeId=${it.id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View Items
+                </Link>
+              </div>
             </div>
           ))}
         </div>

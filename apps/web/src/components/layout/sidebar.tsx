@@ -238,6 +238,39 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Items
                         </Link>
                         <Link
+                          href={`/projects/${project.id}/item-types`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/item-types')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Item Types
+                        </Link>
+                        <Link
+                          href={`/projects/${project.id}/locations`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/locations')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Locations
+                        </Link>
+                        <Link
+                          href={`/projects/${project.id}/floor-plans`}
+                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
+                            pathname.includes('/floor-plans')
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                          onClick={closeMobile}
+                        >
+                          Floor Plans
+                        </Link>
+                        <Link
                           href={`/projects/${project.id}/calendar`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/calendar')

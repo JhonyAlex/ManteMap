@@ -56,8 +56,6 @@ export default function NewProjectPage() {
         router.refresh();
         return;
       }
-        return;
-      }
 
       if (res.status === 409) {
         setErrors({ code: 'A project with this code already exists.' });
