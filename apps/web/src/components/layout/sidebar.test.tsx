@@ -17,7 +17,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Mock next/navigation
@@ -40,6 +40,7 @@ import { useSession, signOut } from 'next-auth/react';
 const mockUsePathname = usePathname as Mock;
 const mockUseSession = useSession as Mock;
 const mockSignOut = signOut as Mock;
+const localStorageState = new Map<string, string>();
 
 function makeSession(overrides: Partial<{ id: string; email: string; name: string | null; role: string }> = {}) {
   return {
@@ -64,6 +65,16 @@ const projects = [
 describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorageState.clear();
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => localStorageState.get(key) ?? null,
+        setItem: (key: string, value: string) => localStorageState.set(key, value),
+        removeItem: (key: string) => localStorageState.delete(key),
+        clear: () => localStorageState.clear(),
+      },
+    });
     mockUsePathname.mockReturnValue('/dashboard');
     mockUseSession.mockReturnValue(makeSession());
     mockSignOut.mockResolvedValue(undefined);
@@ -157,6 +168,32 @@ describe('Sidebar', () => {
 
       expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument();
     });
+
+    it('expands and collapses each project navigation independently', async () => {
+      const user = userEvent.setup();
+      render(<Sidebar projects={projects} />);
+
+      const expandAlpha = screen.getByRole('button', { name: /expand alpha project navigation/i });
+      expect(expandAlpha).toHaveAttribute('aria-expanded', 'false');
+      expect(expandAlpha).toHaveAttribute('aria-controls', 'project-navigation-proj-1');
+
+      await user.click(expandAlpha);
+
+      expect(expandAlpha).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('link', { name: /^dashboard$/i })).toBeInTheDocument();
+
+      await user.click(expandAlpha);
+      expect(expandAlpha).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument();
+    });
+
+    it('marks the exact active project sub-route as the current page', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA/floor-plans');
+      render(<Sidebar projects={projects} />);
+
+      expect(screen.getByRole('link', { name: /floor plans/i })).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByRole('link', { name: /alpha project/i })).not.toHaveAttribute('aria-current');
+    });
   });
 
   describe('user info', () => {
@@ -226,6 +263,26 @@ describe('Sidebar', () => {
       await user.keyboard('{Escape}');
 
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  describe('desktop sidebar', () => {
+    it('toggles compact mode and persists the preference after mount', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<Sidebar projects={projects} />);
+
+      const toggle = screen.getByRole('button', { name: /collapse sidebar/i });
+      await user.click(toggle);
+
+      expect(window.localStorage.getItem('mantemap-sidebar-desktop-compact')).toBe('true');
+      expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument();
+
+      unmount();
+      render(<Sidebar projects={projects} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument();
+      });
     });
   });
 

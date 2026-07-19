@@ -591,7 +591,8 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
                   alt={plan.name}
                   className="h-full w-full object-contain"
                   loading="lazy"
-                />\n              </div>
+                />
+              </div>
               <div className="flex items-center justify-between p-3">
                 <div>
                   <p className="font-medium">{plan.name}</p>

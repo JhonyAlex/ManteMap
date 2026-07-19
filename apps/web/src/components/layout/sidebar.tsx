@@ -3,23 +3,8 @@
 /**
  * Sidebar — interactive client component for the application shell.
  *
- * Renders project navigation, user info, and sign-out.
- * Server Components pass pre-fetched projects as props;
- * this component owns only interactive/mobile state.
- *
- * Accessibility features:
- *   - aria-controls links toggle button to nav
- *   - aria-expanded reflects mobile menu state
- *   - Focus moves to first link when mobile menu opens
- *   - Focus returns to toggle when mobile menu closes
- *   - Escape key closes mobile menu
- *   - Clicking overlay backdrop closes mobile menu
- *   - Adequate touch targets (min 44x44 CSS px)
- *   - Reduced-motion-safe transitions
- *
- * Spec: specs/application-shell/spec.md
- * Design: design.md — "Only forms, navigation state, and SessionProvider are client components"
- * Modern-web-guidance: navigation-drawer, accessibility
+ * Keeps the mobile drawer focus-managed while offering a persisted compact
+ * desktop rail and independently expandable project navigation.
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -39,11 +24,83 @@ interface SidebarProps {
   backgroundId?: string;
 }
 
+interface ProjectNavigationItem {
+  label: string;
+  href: string;
+}
+
 const DRAWER_ID = 'sidebar-drawer';
+const DESKTOP_COMPACT_STORAGE_KEY = 'mantemap-sidebar-desktop-compact';
+
+function NavigationIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`transition-transform motion-reduce:transition-none ${expanded ? 'rotate-90' : ''}`}
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+function MenuIcon({ compact }: { compact: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {compact ? <path d="M9 18l6-6-6-6" /> : <path d="m15 18-6-6 6-6" />}
+    </svg>
+  );
+}
 
 export function Sidebar({ projects, user, backgroundId = 'dashboard-background' }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopCompact, setDesktopCompact] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
+    () => new Set(projects.filter((project) => pathname.startsWith(`/projects/${project.code}`)).map((project) => project.id))
+  );
   const toggleRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const previousMobileOpen = useRef(false);
@@ -53,11 +110,29 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
   }, []);
 
   useEffect(() => {
+    try {
+      setDesktopCompact(window.localStorage.getItem(DESKTOP_COMPACT_STORAGE_KEY) === 'true');
+    } catch {
+      // Storage can be unavailable in private or restricted browser contexts.
+    }
+  }, []);
+
+  useEffect(() => {
+    const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.code}`));
+    if (activeProject) {
+      setExpandedProjects((current) => {
+        if (current.has(activeProject.id)) return current;
+        return new Set(current).add(activeProject.id);
+      });
+    }
+  }, [pathname, projects]);
+
+  useEffect(() => {
     const background = document.getElementById(backgroundId);
     if (mobileOpen) {
       background?.setAttribute('inert', '');
       if (!previousMobileOpen.current) {
-        const firstControl = drawerRef.current?.querySelector<HTMLElement>('a, button');
+        const firstControl = drawerRef.current?.querySelector<HTMLElement>('nav a, nav button');
         firstControl?.focus();
       }
     } else {
@@ -71,29 +146,28 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
     return () => document.getElementById(backgroundId)?.removeAttribute('inert');
   }, [backgroundId]);
 
-  // Escape key closes mobile menu
   useEffect(() => {
     if (!mobileOpen) return;
 
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
         closeMobile();
         return;
       }
 
-      if (e.key === 'Tab' && drawerRef.current) {
-        const controls = Array.from(
-          drawerRef.current.querySelectorAll<HTMLElement>('a, button')
+      if (event.key === 'Tab' && drawerRef.current) {
+        const controls = Array.from(drawerRef.current.querySelectorAll<HTMLElement>('a, button')).filter(
+          (control) => !control.closest('[data-desktop-only]')
         );
         if (controls.length === 0) return;
 
         const first = controls[0];
         const last = controls[controls.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
           first.focus();
         }
       }
@@ -107,53 +181,56 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
     return pathname.startsWith(`/projects/${projectCode}`);
   }
 
-  function handleToggle() {
-    setMobileOpen((prev) => !prev);
+  function isCurrentRoute(href: string) {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  function handleMobileToggle() {
+    setMobileOpen((previous) => !previous);
+  }
+
+  function handleDesktopToggle() {
+    setDesktopCompact((previous) => {
+      const next = !previous;
+      try {
+        window.localStorage.setItem(DESKTOP_COMPACT_STORAGE_KEY, String(next));
+      } catch {
+        // The sidebar remains usable even when the browser disallows storage.
+      }
+      return next;
+    });
+  }
+
+  function toggleProject(projectId: string) {
+    setExpandedProjects((current) => {
+      const next = new Set(current);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
   }
 
   return (
-    <aside className="flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar-background md:w-64">
-      {/* Mobile toggle */}
-      <div className="flex items-center justify-between p-4 md:hidden">
+    <aside
+      className={`group flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar-background transition-[width] motion-reduce:transition-none ${
+        desktopCompact ? 'md:w-20' : 'md:w-64'
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-sidebar-border p-3 md:hidden">
         <span className="text-sm font-semibold text-sidebar-foreground">ManteMap</span>
         <button
           ref={toggleRef}
           type="button"
-          onClick={handleToggle}
+          onClick={handleMobileToggle}
           aria-expanded={mobileOpen}
           aria-controls={DRAWER_ID}
           aria-label="Toggle menu"
-          className="          rounded-md p-3 text-sidebar-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none"
+          className="rounded-md p-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            {mobileOpen ? (
-              <>
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </>
-            ) : (
-              <>
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </>
-            )}
-          </svg>
+          <MenuIcon compact={mobileOpen} />
         </button>
       </div>
 
-      {/* Mobile overlay backdrop — click to dismiss */}
       {mobileOpen && (
         <div
           data-sidebar-overlay
@@ -174,19 +251,34 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
           mobileOpen ? 'fixed inset-y-0 left-0 z-50 flex w-64' : 'hidden'
         } flex-1 flex-col bg-sidebar-background md:static md:flex md:w-auto`}
       >
-        <nav aria-label="Projects" className="flex-1 overflow-y-auto p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+        <div data-desktop-only className="hidden items-center justify-between border-b border-sidebar-border p-3 md:flex">
+          <span className={desktopCompact ? 'sr-only' : 'text-sm font-semibold text-sidebar-foreground'}>
+            ManteMap
+          </span>
+          <button
+            type="button"
+            onClick={handleDesktopToggle}
+            aria-label={desktopCompact ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={desktopCompact ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="flex h-11 w-11 items-center justify-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none"
+          >
+            <MenuIcon compact={desktopCompact} />
+          </button>
+        </div>
+
+        <nav aria-label="Projects" className={`flex-1 overflow-y-auto ${desktopCompact ? 'p-2 md:px-2' : 'p-4'}`}>
+          <div className={`mb-3 flex items-center ${desktopCompact ? 'justify-center md:justify-center' : 'justify-between'}`}>
+            <h2 className={`text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 ${desktopCompact ? 'md:sr-only' : ''}`}>
               Projects
             </h2>
             <Link
               href="/projects/new"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors motion-reduce:transition-none"
+              className="flex h-11 w-11 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none"
               aria-label="New project"
               title="New project"
               onClick={closeMobile}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -194,106 +286,80 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
           </div>
 
           {projects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No projects yet</p>
+            <p className={`text-sm text-muted-foreground ${desktopCompact ? 'md:sr-only' : ''}`}>No projects yet</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="space-y-2">
               {projects.map((project) => {
-                const active = isActiveProject(project.code);
+                const projectHref = `/projects/${project.code}`;
+                const activeProject = isActiveProject(project.code);
+                const expanded = expandedProjects.has(project.id);
+                const submenuId = `project-navigation-${project.id}`;
+                const navigationItems: ProjectNavigationItem[] = [
+                  { label: 'Dashboard', href: `${projectHref}/dashboard` },
+                  { label: 'Items', href: `${projectHref}/items` },
+                  { label: 'Item Types', href: `${projectHref}/item-types` },
+                  { label: 'Locations', href: `${projectHref}/locations` },
+                  { label: 'Floor Plans', href: `${projectHref}/floor-plans` },
+                  { label: 'Calendar', href: `${projectHref}/calendar` },
+                  { label: 'Alerts', href: `${projectHref}/alerts` },
+                ];
+
                 return (
                   <li key={project.id}>
-                    <Link
-                      href={`/projects/${project.code}`}
-                      aria-current={active ? 'page' : undefined}
-                      className={`block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                        active && !pathname.includes('/items')
-                          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                      }`}
-                      onClick={closeMobile}
-                    >
-                      {project.name}
-                    </Link>
-                    {active && (
-                      <>
-                        <Link
-                          href={`/projects/${project.code}/dashboard`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/dashboard')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Dashboard
-                        </Link>
-                        <Link
-                          href={`/projects/${project.code}/items`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/items')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Items
-                        </Link>
-                        <Link
-                          href={`/projects/${project.code}/item-types`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/item-types')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Item Types
-                        </Link>
-                        <Link
-                          href={`/projects/${project.code}/locations`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/locations')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Locations
-                        </Link>
-                        <Link
-                          href={`/projects/${project.code}/floor-plans`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/floor-plans')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Floor Plans
-                        </Link>
-                        <Link
-                          href={`/projects/${project.code}/calendar`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/calendar')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Calendar
-                        </Link>
-                        <Link
-                          href={`/projects/${project.code}/alerts`}
-                          className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
-                            pathname.includes('/alerts')
-                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                          onClick={closeMobile}
-                        >
-                          Alerts
-                        </Link>
-                      </>
-                    )}
+                    <div className={`flex items-center rounded-md ${activeProject ? 'bg-sidebar-accent/60' : ''}`}>
+                      <Link
+                        href={projectHref}
+                        aria-current={pathname === projectHref ? 'page' : undefined}
+                        aria-label={project.name}
+                        title={desktopCompact ? project.name : undefined}
+                        className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-l-md border-l-2 px-3 py-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none ${
+                          activeProject
+                            ? 'border-sidebar-primary font-semibold text-sidebar-accent-foreground'
+                            : 'border-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        } ${desktopCompact ? 'md:justify-center md:px-2' : ''}`}
+                        onClick={closeMobile}
+                      >
+                        <NavigationIcon className={desktopCompact ? 'md:block' : 'hidden'} />
+                        <span className={`truncate ${desktopCompact ? 'md:sr-only' : ''}`}>{project.name}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => toggleProject(project.id)}
+                        aria-expanded={expanded}
+                        aria-controls={submenuId}
+                        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${project.name} navigation`}
+                        title={`${expanded ? 'Collapse' : 'Expand'} ${project.name} navigation`}
+                        className={`flex min-h-11 min-w-11 items-center justify-center rounded-r-md text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none ${
+                          activeProject ? 'text-sidebar-accent-foreground' : ''
+                        }`}
+                      >
+                        <ChevronIcon expanded={expanded} />
+                      </button>
+                    </div>
+                    <ul id={submenuId} hidden={!expanded} className="mt-1 space-y-1">
+                      {navigationItems.map((item) => {
+                        const currentRoute = isCurrentRoute(item.href);
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              aria-current={currentRoute ? 'page' : undefined}
+                              aria-label={item.label}
+                              title={desktopCompact ? item.label : undefined}
+                              className={`flex min-h-11 items-center gap-2 rounded-md border-l-2 px-3 py-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none ${
+                                currentRoute
+                                  ? 'border-sidebar-primary bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-sm'
+                                  : 'border-transparent text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
+                              } ${desktopCompact ? 'md:justify-center md:px-2' : 'ml-4'}`}
+                              onClick={closeMobile}
+                            >
+                              <NavigationIcon className={desktopCompact ? 'md:block' : 'hidden'} />
+                              <span className={desktopCompact ? 'md:sr-only' : ''}>{item.label}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </li>
                 );
               })}
@@ -302,19 +368,22 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
         </nav>
 
         {user && (
-          <div className="border-t border-sidebar-border p-4">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">
-              {user.name || user.email}
-            </p>
-            {user.name && (
-              <p className="truncate text-xs text-sidebar-foreground/60">{user.email}</p>
-            )}
+          <div className={`border-t border-sidebar-border ${desktopCompact ? 'p-2' : 'p-4'}`}>
+            <div className={desktopCompact ? 'md:sr-only' : ''}>
+              <p className="truncate text-sm font-medium text-sidebar-foreground">{user.name || user.email}</p>
+              {user.name && <p className="truncate text-xs text-sidebar-foreground/70">{user.email}</p>}
+            </div>
             <button
               type="button"
               onClick={() => signOut()}
-              className="mt-2 min-h-11 w-full rounded-md border border-sidebar-border px-3 py-2.5 text-xs text-sidebar-foreground transition-colors motion-reduce:transition-none hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
+              aria-label="Sign out"
+              title={desktopCompact ? 'Sign out' : undefined}
+              className={`mt-2 flex min-h-11 w-full items-center justify-center rounded-md border border-sidebar-border px-3 py-2.5 text-xs text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring motion-reduce:transition-none ${
+                desktopCompact ? 'md:px-2' : ''
+              }`}
             >
-              Sign out
+              <span className={desktopCompact ? 'md:sr-only' : ''}>Sign out</span>
+              <span className={desktopCompact ? 'hidden md:block' : 'hidden'} aria-hidden="true">↗</span>
             </button>
           </div>
         )}
