@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createFloorPlanSchema, type CreateFloorPlanInput } from '@mantemap/validation';
 import { ZodError } from 'zod';
 import {
@@ -541,12 +542,11 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
             <div key={plan.id} className="overflow-hidden rounded-lg border">
               <div className="relative aspect-video bg-muted">
                 <img
-                  src={plan.imageUrl}
+                  src={`/api/projects/${projectId}/floor-plans/${plan.id}/image`}
                   alt={plan.name}
                   className="h-full w-full object-contain"
                   loading="lazy"
-                />
-              </div>
+                />\n              </div>
               <div className="flex items-center justify-between p-3">
                 <div>
                   <p className="font-medium">{plan.name}</p>
@@ -561,12 +561,12 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
                       Inactive
                     </span>
                   )}
-                  <a
+                  <Link
                     href={`/projects/${projectId}/floor-plans/${plan.id}`}
                     className="text-sm text-primary hover:underline"
                   >
                     View
-                  </a>
+                  </Link>
                   <Button
                     variant="ghost"
                     size="sm"
