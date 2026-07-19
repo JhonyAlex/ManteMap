@@ -62,6 +62,7 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const deleteMutation = useDeleteItem(projectId, item.id);
 
   const handleDelete = useCallback(() => {
@@ -71,6 +72,47 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
       },
     });
   }, [deleteMutation, router, projectId]);
+
+  const handleDuplicate = useCallback(async () => {
+    setIsDuplicating(true);
+    try {
+      const fieldValues = (item.fieldValues ?? []).map((fv) => ({
+        dynamicFieldId: fv.dynamicFieldId,
+        value: fv.value,
+      }));
+
+      const payload = {
+        name: `${item.name} (copy)`,
+        itemTypeId: item.itemTypeId,
+        statusId: item.statusId ?? undefined,
+        locationId: item.locationId ?? undefined,
+        fieldValues: fieldValues.length > 0 ? fieldValues : undefined,
+      };
+
+      const res = await fetch(`/api/projects/${projectId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 201) {
+        const body = await res.json();
+        const newItemId = body.data?.id;
+        if (newItemId) {
+          router.push(`/projects/${projectId}/items/${newItemId}`);
+        } else {
+          alert('Item duplicated but could not navigate to it. Please refresh the list.');
+        }
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(body.message || 'Failed to duplicate item.');
+      }
+    } catch {
+      alert('An unexpected error occurred while duplicating.');
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [item, projectId, router]);
 
   return (
     <div className="space-y-6">
@@ -117,6 +159,13 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
             className="inline-flex min-h-[44px] items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             Show QR
+          </button>
+          <button
+            onClick={handleDuplicate}
+            disabled={isDuplicating}
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+          >
+            {isDuplicating ? 'Duplicating...' : 'Duplicate'}
           </button>
           <ExportPDFButton
             projectId={projectId}

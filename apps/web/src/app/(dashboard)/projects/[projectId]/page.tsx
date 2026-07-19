@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/services/project-service';
 import { getProjectMetrics } from '@/lib/services/metrics-service';
 import { NotFoundError } from '@mantemap/shared';
+import { ProjectSettings } from '@/components/project-settings';
 
 interface ProjectHubPageProps {
   params: Promise<{ projectId: string }>;
@@ -109,6 +110,14 @@ export default async function ProjectPage({ params }: ProjectHubPageProps) {
             <p className="mt-1 text-sm text-muted-foreground">{link.description}</p>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-8">
+        <ProjectSettings
+          projectId={projectId}
+          currentName={project.name}
+          currentDescription={project.description}
+        />
       </div>
     </div>
   );

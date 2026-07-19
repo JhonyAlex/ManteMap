@@ -3,7 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createStatusSchema, type CreateStatusInput } from '@mantemap/validation';
+import {
+  createStatusSchema,
+  type CreateStatusInput,
+  updateStatusSchema,
+  type UpdateStatusInput,
+  reorderStatusesSchema,
+  type ReorderStatusesInput,
+} from '@mantemap/validation';
 import { ZodError } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -76,7 +83,10 @@ export default function StatusesPage({ params }: StatusesPageProps) {
   const [isDefault, setIsDefault] = useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -130,51 +140,157 @@ export default function StatusesPage({ params }: StatusesPageProps) {
   }
 
   // ---------------------------------------------------------------------------
-  // Submit
+  // Create / Update
   // ---------------------------------------------------------------------------
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreateOrUpdate(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
-    let parsed: CreateStatusInput;
-    try {
-      parsed = createStatusSchema.parse({
-        name,
-        key,
-        color,
-        description: description || undefined,
-        isDefault,
-      });
-    } catch (err) {
-      if (err instanceof ZodError) {
-        const fieldErrors: FormErrors = {};
-        for (const issue of err.issues) {
-          const f = issue.path[0] as keyof FormErrors;
-          if (f === 'name' || f === 'key' || f === 'color') {
-            fieldErrors[f] = issue.message;
+    const isEditing = editingId !== null;
+
+    if (isEditing) {
+      let parsed: UpdateStatusInput;
+      try {
+        parsed = updateStatusSchema.parse({
+          name,
+          key,
+          color,
+          description: description || undefined,
+          isDefault,
+        });
+      } catch (err) {
+        if (err instanceof ZodError) {
+          const fieldErrors: FormErrors = {};
+          for (const issue of err.issues) {
+            const f = issue.path[0] as keyof FormErrors;
+            if (f === 'name' || f === 'key' || f === 'color') {
+              fieldErrors[f] = issue.message;
+            }
           }
+          setErrors(fieldErrors);
         }
-        setErrors(fieldErrors);
+        return;
       }
-      return;
-    }
 
-    setIsCreating(true);
+      setIsSubmitting(true);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses/${editingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+
+        if (res.ok) {
+          resetForm();
+          fetchStatuses();
+          router.refresh();
+          return;
+        }
+
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          setErrors({ key: body.message || 'A status with this key already exists.' });
+          return;
+        }
+        setErrors({ general: body.message || 'Failed to update status.' });
+      } catch {
+        setErrors({ general: 'An unexpected error occurred.' });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      let parsed: CreateStatusInput;
+      try {
+        parsed = createStatusSchema.parse({
+          name,
+          key,
+          color,
+          description: description || undefined,
+          isDefault,
+        });
+      } catch (err) {
+        if (err instanceof ZodError) {
+          const fieldErrors: FormErrors = {};
+          for (const issue of err.issues) {
+            const f = issue.path[0] as keyof FormErrors;
+            if (f === 'name' || f === 'key' || f === 'color') {
+              fieldErrors[f] = issue.message;
+            }
+          }
+          setErrors(fieldErrors);
+        }
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+
+        if (res.status === 201) {
+          resetForm();
+          fetchStatuses();
+          router.refresh();
+          return;
+        }
+
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          setErrors({ key: body.message || 'A status with this key already exists.' });
+          return;
+        }
+        setErrors({ general: body.message || 'Failed to create status.' });
+      } catch {
+        setErrors({ general: 'An unexpected error occurred.' });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  }
+
+  function resetForm() {
+    setName('');
+    setKey('');
+    setColor(STATUS_COLORS[0]!);
+    setDescription('');
+    setIsDefault(false);
+    setShowForm(false);
+    setEditingId(null);
+    setErrors({});
+  }
+
+  function startEditing(status: StatusItem) {
+    setEditingId(status.id);
+    setName(status.name);
+    setKey(status.key);
+    setColor(status.color);
+    setDescription(status.description ?? '');
+    setIsDefault(status.isDefault);
+    setShowForm(true);
+    setErrors({});
+  }
+
+  function cancelForm() {
+    resetForm();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Delete
+  // ---------------------------------------------------------------------------
+
+  async function handleDelete(statusId: string) {
+    if (!confirm('Delete this status? This action cannot be undone.')) return;
+
     try {
-      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses/${statusId}`, {
+        method: 'DELETE',
       });
 
-      if (res.status === 201) {
-        setName('');
-        setKey('');
-        setColor(STATUS_COLORS[0]!);
-        setDescription('');
-        setIsDefault(false);
-        setShowForm(false);
+      if (res.ok) {
         fetchStatuses();
         router.refresh();
         return;
@@ -182,20 +298,91 @@ export default function StatusesPage({ params }: StatusesPageProps) {
 
       const body = await res.json().catch(() => ({}));
       if (res.status === 409) {
-        setErrors({ key: body.message || 'A status with this key already exists.' });
+        alert(body.message || 'Cannot delete: this status has items.');
         return;
       }
-      setErrors({ general: body.message || 'Failed to create status.' });
+      alert(body.message || 'Failed to delete status.');
     } catch {
-      setErrors({ general: 'An unexpected error occurred.' });
-    } finally {
-      setIsCreating(false);
+      alert('An unexpected error occurred.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Set Default
+  // ---------------------------------------------------------------------------
+
+  async function handleSetDefault(statusId: string) {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses/${statusId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDefault: true }),
+      });
+
+      if (res.ok) {
+        fetchStatuses();
+        router.refresh();
+        return;
+      }
+
+      const body = await res.json().catch(() => ({}));
+      alert(body.message || 'Failed to set as default.');
+    } catch {
+      alert('An unexpected error occurred.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reorder
+  // ---------------------------------------------------------------------------
+
+  async function handleMoveUp(sorted: StatusItem[], index: number) {
+    if (index <= 0) return;
+    const newSorted = [...sorted];
+    [newSorted[index - 1], newSorted[index]] = [newSorted[index]!, newSorted[index - 1]!];
+    await submitReorder(newSorted.map((s) => s.id));
+  }
+
+  async function handleMoveDown(sorted: StatusItem[], index: number) {
+    if (index >= sorted.length - 1) return;
+    const newSorted = [...sorted];
+    [newSorted[index], newSorted[index + 1]] = [newSorted[index + 1]!, newSorted[index]!];
+    await submitReorder(newSorted.map((s) => s.id));
+  }
+
+  async function submitReorder(statusIds: string[]) {
+    let parsed: ReorderStatusesInput;
+    try {
+      parsed = reorderStatusesSchema.parse({ statusIds });
+    } catch {
+      alert('Invalid reorder data.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+
+      if (res.ok) {
+        fetchStatuses();
+        router.refresh();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(body.message || 'Failed to reorder statuses.');
+      }
+    } catch {
+      alert('An unexpected error occurred.');
     }
   }
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  const sorted = statuses.slice().sort((a, b) => a.order - b.order);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -227,10 +414,10 @@ export default function StatusesPage({ params }: StatusesPageProps) {
         )}
       </div>
 
-      {/* Create form */}
+      {/* Create / Edit form */}
       {showForm && (
-        <form onSubmit={handleCreate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">New Status</h3>
+        <form onSubmit={handleCreateOrUpdate} noValidate className="mb-8 rounded-lg border p-4">
+          <h3 className="mb-3 font-semibold">{editingId ? 'Edit Status' : 'New Status'}</h3>
 
           {errors.general && (
             <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
@@ -319,14 +506,14 @@ export default function StatusesPage({ params }: StatusesPageProps) {
           <div className="mt-4 flex gap-2">
             <button
               type="submit"
-              disabled={isCreating}
+              disabled={isSubmitting}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {isCreating ? 'Creating...' : 'Create Status'}
+              {isSubmitting ? 'Saving...' : editingId ? 'Update Status' : 'Create Status'}
             </button>
             <button
               type="button"
-              onClick={() => { setShowForm(false); setErrors({}); }}
+              onClick={cancelForm}
               className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
             >
               Cancel
@@ -353,35 +540,77 @@ export default function StatusesPage({ params }: StatusesPageProps) {
         </div>
       ) : (
         <div className="space-y-2">
-          {statuses
-            .slice()
-            .sort((a, b) => a.order - b.order)
-            .map((status) => (
-              <div key={status.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div className="flex items-center gap-3">
-                  <span
-                    className="h-5 w-5 flex-shrink-0 rounded-full border"
-                    style={{ backgroundColor: status.color }}
-                  />
-                  <div>
-                    <p className="font-medium">
-                      {status.name}
-                      {status.isDefault && (
-                        <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                          Default
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{status.key}</p>
-                  </div>
+          {sorted.map((status, index) => (
+            <div key={status.id} className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                <span
+                  className="h-5 w-5 flex-shrink-0 rounded-full border"
+                  style={{ backgroundColor: status.color }}
+                />
+                <div>
+                  <p className="font-medium">
+                    {status.name}
+                    {status.isDefault && (
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        Default
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{status.key}</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
                 {status.description && (
-                  <p className="max-w-[200px] truncate text-xs text-muted-foreground">
+                  <p className="max-w-[150px] truncate text-xs text-muted-foreground">
                     {status.description}
                   </p>
                 )}
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleMoveUp(sorted, index)}
+                    disabled={index === 0}
+                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMoveDown(sorted, index)}
+                    disabled={index === sorted.length - 1}
+                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                </div>
+                {!status.isDefault && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetDefault(status.id)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Set Default
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => startEditing(status)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(status.id)}
+                  className="text-xs text-destructive hover:text-destructive/80"
+                >
+                  Delete
+                </button>
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -3,7 +3,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createDynamicFieldSchema, dynamicFieldTypeEnum, type CreateDynamicFieldInput, type DynamicFieldType } from '@mantemap/validation';
+import {
+  createDynamicFieldSchema,
+  type CreateDynamicFieldInput,
+  updateDynamicFieldSchema,
+  type UpdateDynamicFieldInput,
+  reorderFieldsSchema,
+  type ReorderFieldsInput,
+  dynamicFieldTypeEnum,
+  type DynamicFieldType,
+} from '@mantemap/validation';
 import { ZodError } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -93,6 +102,66 @@ const TEXT_TYPES = new Set<DynamicFieldType>(['SHORT_TEXT', 'LONG_TEXT']);
 const DATE_TYPES = new Set<DynamicFieldType>(['DATE', 'DATETIME']);
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getHumanTypeLabel(t: DynamicFieldType): string {
+  return FIELD_TYPES.find((ft) => ft.value === t)?.label ?? t;
+}
+
+function buildValidationPayload(type: DynamicFieldType, raw: {
+  valMin: string; valMax: string;
+  valMinLength: string; valMaxLength: string;
+  valPattern: string; valMinDate: string; valMaxDate: string;
+}): Record<string, unknown> | undefined {
+  if (NUMERIC_TYPES.has(type)) {
+    if (raw.valMin || raw.valMax) {
+      const v: Record<string, unknown> = {};
+      if (raw.valMin) v.min = Number(raw.valMin);
+      if (raw.valMax) v.max = Number(raw.valMax);
+      return v;
+    }
+  } else if (TEXT_TYPES.has(type)) {
+    if (raw.valMinLength || raw.valMaxLength || raw.valPattern) {
+      const v: Record<string, unknown> = {};
+      if (raw.valMinLength) v.minLength = Number(raw.valMinLength);
+      if (raw.valMaxLength) v.maxLength = Number(raw.valMaxLength);
+      if (raw.valPattern) v.pattern = raw.valPattern;
+      return v;
+    }
+  } else if (DATE_TYPES.has(type)) {
+    if (raw.valMinDate || raw.valMaxDate) {
+      const v: Record<string, unknown> = {};
+      if (raw.valMinDate) v.minDate = raw.valMinDate;
+      if (raw.valMaxDate) v.maxDate = raw.valMaxDate;
+      return v;
+    }
+  }
+  return undefined;
+}
+
+function populateValidationFromField(field: DynamicFieldItem) {
+  const v = field.validation ?? {};
+  return {
+    valMin: v.min != null ? String(v.min) : '',
+    valMax: v.max != null ? String(v.max) : '',
+    valMinLength: v.minLength != null ? String(v.minLength) : '',
+    valMaxLength: v.maxLength != null ? String(v.maxLength) : '',
+    valPattern: typeof v.pattern === 'string' ? v.pattern : '',
+    valMinDate: typeof v.minDate === 'string' ? v.minDate : '',
+    valMaxDate: typeof v.maxDate === 'string' ? v.maxDate : '',
+  };
+}
+
+function generateCopyKey(originalKey: string, existingKeys: string[]): string {
+  const base = `${originalKey}-copy`;
+  if (!existingKeys.includes(base)) return base;
+  let i = 2;
+  while (existingKeys.includes(`${base}-${i}`)) i++;
+  return `${base}-${i}`;
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -130,7 +199,10 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
   const [valMaxDate, setValMaxDate] = useState('');
 
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit state
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -173,7 +245,6 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
 
   function handleNameChange(value: string) {
     setName(value);
-    // Auto-generate key from name if key is empty or was auto-generated
     if (!key || key === name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')) {
       setKey(
         value
@@ -198,108 +269,6 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
     );
   }
 
-  function getHumanTypeLabel(t: DynamicFieldType): string {
-    return FIELD_TYPES.find((ft) => ft.value === t)?.label ?? t;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------------------
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-
-    // Build validation object
-    let validation: Record<string, unknown> | undefined;
-    if (NUMERIC_TYPES.has(type)) {
-      if (valMin || valMax) {
-        validation = {};
-        if (valMin) validation.min = Number(valMin);
-        if (valMax) validation.max = Number(valMax);
-      }
-    } else if (TEXT_TYPES.has(type)) {
-      if (valMinLength || valMaxLength || valPattern) {
-        validation = {};
-        if (valMinLength) validation.minLength = Number(valMinLength);
-        if (valMaxLength) validation.maxLength = Number(valMaxLength);
-        if (valPattern) validation.pattern = valPattern;
-      }
-    } else if (DATE_TYPES.has(type)) {
-      if (valMinDate || valMaxDate) {
-        validation = {};
-        if (valMinDate) validation.minDate = valMinDate;
-        if (valMaxDate) validation.maxDate = valMaxDate;
-      }
-    }
-
-    // Build options for SELECT/MULTI_SELECT
-    const fieldOptions = OPTIONS_REQUIRED_TYPES.has(type)
-      ? options.filter((o) => o.label.trim() && o.value.trim())
-      : undefined;
-
-    const payload = {
-      name,
-      key,
-      type,
-      description: description || undefined,
-      required,
-      order: Number(order) || 0,
-      visible: true,
-      options: fieldOptions?.length ? fieldOptions : undefined,
-      unit: unit || undefined,
-      validation,
-      showInList,
-      showInSearch,
-      helpText: helpText || undefined,
-    };
-
-    let parsed: CreateDynamicFieldInput;
-    try {
-      parsed = createDynamicFieldSchema.parse(payload);
-    } catch (err) {
-      if (err instanceof ZodError) {
-        const fieldErrors: FormErrors = {};
-        for (const issue of err.issues) {
-          const f = issue.path[0] as keyof FormErrors;
-          if (f === 'name' || f === 'key' || f === 'type' || f === 'options' || f === 'validation') {
-            fieldErrors[f] = issue.message;
-          }
-        }
-        setErrors(fieldErrors);
-      }
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
-      });
-
-      if (res.status === 201) {
-        resetForm();
-        setShowForm(false);
-        fetchFields();
-        router.refresh();
-        return;
-      }
-
-      const body = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        setErrors({ key: body.message || 'A field with this key already exists.' });
-        return;
-      }
-      setErrors({ general: body.message || 'Failed to create field.' });
-    } catch {
-      setErrors({ general: 'An unexpected error occurred.' });
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
   function resetForm() {
     setName('');
     setKey('');
@@ -320,6 +289,309 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
     setValMinDate('');
     setValMaxDate('');
     setErrors({});
+    setEditingFieldId(null);
+  }
+
+  function cancelForm() {
+    setShowForm(false);
+    resetForm();
+  }
+
+  function startEditing(field: DynamicFieldItem) {
+    setEditingFieldId(field.id);
+    setName(field.name);
+    setKey(field.key);
+    setType(field.type);
+    setDescription(field.description ?? '');
+    setRequired(field.required);
+    setShowInList(field.showInList ?? false);
+    setShowInSearch(field.showInSearch ?? false);
+    setHelpText(field.helpText ?? '');
+    setUnit(field.unit ?? '');
+    setOrder(String(field.order));
+    setOptions(field.options?.length ? [...field.options] : [{ label: '', value: '' }]);
+
+    const v = populateValidationFromField(field);
+    setValMin(v.valMin);
+    setValMax(v.valMax);
+    setValMinLength(v.valMinLength);
+    setValMaxLength(v.valMaxLength);
+    setValPattern(v.valPattern);
+    setValMinDate(v.valMinDate);
+    setValMaxDate(v.valMaxDate);
+
+    setShowForm(true);
+    setErrors({});
+  }
+
+  // ---------------------------------------------------------------------------
+  // Submit (create or update)
+  // ---------------------------------------------------------------------------
+
+  async function handleCreateOrUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    setErrors({});
+
+    const isEditing = editingFieldId !== null;
+
+    const fieldOptions = OPTIONS_REQUIRED_TYPES.has(type)
+      ? options.filter((o) => o.label.trim() && o.value.trim())
+      : undefined;
+
+    const validation = buildValidationPayload(type, {
+      valMin, valMax, valMinLength, valMaxLength, valPattern, valMinDate, valMaxDate,
+    });
+
+    if (isEditing) {
+      const payload = {
+        name,
+        key,
+        type,
+        description: description || undefined,
+        required,
+        order: Number(order) || 0,
+        visible: true,
+        options: fieldOptions?.length ? fieldOptions : undefined,
+        unit: unit || undefined,
+        validation,
+        showInList,
+        showInSearch,
+        helpText: helpText || undefined,
+      };
+
+      let parsed: UpdateDynamicFieldInput;
+      try {
+        parsed = updateDynamicFieldSchema.parse(payload);
+      } catch (err) {
+        if (err instanceof ZodError) {
+          const fieldErrors: FormErrors = {};
+          for (const issue of err.issues) {
+            const f = issue.path[0] as keyof FormErrors;
+            if (f === 'name' || f === 'key' || f === 'type' || f === 'options' || f === 'validation') {
+              fieldErrors[f] = issue.message;
+            }
+          }
+          setErrors(fieldErrors);
+        }
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields/${editingFieldId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+
+        if (res.ok) {
+          resetForm();
+          setShowForm(false);
+          fetchFields();
+          router.refresh();
+          return;
+        }
+
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          setErrors({ key: body.message || 'A field with this key already exists.' });
+          return;
+        }
+        setErrors({ general: body.message || 'Failed to update field.' });
+      } catch {
+        setErrors({ general: 'An unexpected error occurred.' });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      const payload = {
+        name,
+        key,
+        type,
+        description: description || undefined,
+        required,
+        order: Number(order) || 0,
+        visible: true,
+        options: fieldOptions?.length ? fieldOptions : undefined,
+        unit: unit || undefined,
+        validation,
+        showInList,
+        showInSearch,
+        helpText: helpText || undefined,
+      };
+
+      let parsed: CreateDynamicFieldInput;
+      try {
+        parsed = createDynamicFieldSchema.parse(payload);
+      } catch (err) {
+        if (err instanceof ZodError) {
+          const fieldErrors: FormErrors = {};
+          for (const issue of err.issues) {
+            const f = issue.path[0] as keyof FormErrors;
+            if (f === 'name' || f === 'key' || f === 'type' || f === 'options' || f === 'validation') {
+              fieldErrors[f] = issue.message;
+            }
+          }
+          setErrors(fieldErrors);
+        }
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+
+        if (res.status === 201) {
+          resetForm();
+          setShowForm(false);
+          fetchFields();
+          router.refresh();
+          return;
+        }
+
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          setErrors({ key: body.message || 'A field with this key already exists.' });
+          return;
+        }
+        setErrors({ general: body.message || 'Failed to create field.' });
+      } catch {
+        setErrors({ general: 'An unexpected error occurred.' });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Delete
+  // ---------------------------------------------------------------------------
+
+  async function handleDelete(fieldId: string) {
+    if (!confirm('Delete this field? This action cannot be undone.')) return;
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields/${fieldId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        fetchFields();
+        router.refresh();
+        return;
+      }
+
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        alert(body.message || 'Cannot delete: this field has values.');
+        return;
+      }
+      alert(body.message || 'Failed to delete field.');
+    } catch {
+      alert('An unexpected error occurred.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Duplicate
+  // ---------------------------------------------------------------------------
+
+  async function handleDuplicate(field: DynamicFieldItem) {
+    const existingKeys = fields.map((f) => f.key);
+    const newKey = generateCopyKey(field.key, existingKeys);
+
+    const payload = {
+      name: `${field.name} (copy)`,
+      key: newKey,
+      type: field.type,
+      description: field.description || undefined,
+      required: field.required,
+      order: field.order + 1,
+      visible: field.visible,
+      options: field.options?.length ? field.options : undefined,
+      unit: field.unit || undefined,
+      validation: field.validation && Object.keys(field.validation).length > 0 ? field.validation : undefined,
+      showInList: field.showInList ?? false,
+      showInSearch: field.showInSearch ?? false,
+      helpText: field.helpText || undefined,
+    };
+
+    let parsed: CreateDynamicFieldInput;
+    try {
+      parsed = createDynamicFieldSchema.parse(payload);
+    } catch {
+      alert('Failed to validate duplicate field.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+
+      if (res.status === 201) {
+        fetchFields();
+        router.refresh();
+        return;
+      }
+
+      const body = await res.json().catch(() => ({}));
+      alert(body.message || 'Failed to duplicate field.');
+    } catch {
+      alert('An unexpected error occurred.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reorder
+  // ---------------------------------------------------------------------------
+
+  async function handleMoveUp(sorted: DynamicFieldItem[], index: number) {
+    if (index <= 0) return;
+    const newSorted = [...sorted];
+    [newSorted[index - 1], newSorted[index]] = [newSorted[index]!, newSorted[index - 1]!];
+    await submitReorder(newSorted.map((f) => f.id));
+  }
+
+  async function handleMoveDown(sorted: DynamicFieldItem[], index: number) {
+    if (index >= sorted.length - 1) return;
+    const newSorted = [...sorted];
+    [newSorted[index], newSorted[index + 1]] = [newSorted[index + 1]!, newSorted[index]!];
+    await submitReorder(newSorted.map((f) => f.id));
+  }
+
+  async function submitReorder(fieldIds: string[]) {
+    let parsed: ReorderFieldsInput;
+    try {
+      parsed = reorderFieldsSchema.parse({ fieldIds });
+    } catch {
+      alert('Invalid reorder data.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+
+      if (res.ok) {
+        fetchFields();
+        router.refresh();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(body.message || 'Failed to reorder fields.');
+      }
+    } catch {
+      alert('An unexpected error occurred.');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -328,6 +600,7 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
 
   const showsValidation = NUMERIC_TYPES.has(type) || TEXT_TYPES.has(type) || DATE_TYPES.has(type);
   const showsOptions = OPTIONS_REQUIRED_TYPES.has(type);
+  const sorted = fields.slice().sort((a, b) => a.order - b.order);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -359,10 +632,10 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
         )}
       </div>
 
-      {/* Create form */}
+      {/* Create / Edit form */}
       {showForm && (
-        <form onSubmit={handleCreate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">New Field</h3>
+        <form onSubmit={handleCreateOrUpdate} noValidate className="mb-8 rounded-lg border p-4">
+          <h3 className="mb-3 font-semibold">{editingFieldId ? 'Edit Field' : 'New Field'}</h3>
 
           {errors.general && (
             <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
@@ -665,14 +938,14 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
           <div className="mt-4 flex gap-2">
             <button
               type="submit"
-              disabled={isCreating}
+              disabled={isSubmitting}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {isCreating ? 'Creating...' : 'Create Field'}
+              {isSubmitting ? 'Saving...' : editingFieldId ? 'Update Field' : 'Create Field'}
             </button>
             <button
               type="button"
-              onClick={() => { setShowForm(false); resetForm(); }}
+              onClick={cancelForm}
               className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
             >
               Cancel
@@ -699,30 +972,71 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
         </div>
       ) : (
         <div className="space-y-1">
-          {fields
-            .slice()
-            .sort((a, b) => a.order - b.order)
-            .map((field) => (
-              <div key={field.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                    {getHumanTypeLabel(field.type)}
-                  </span>
-                  <div>
-                    <p className="font-medium">
-                      {field.name}
-                      {field.required && <span className="ml-1 text-xs text-destructive">*</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{field.key}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {field.showInList && <span className="rounded bg-muted px-1.5 py-0.5">In list</span>}
-                  {field.unit && <span className="rounded bg-muted px-1.5 py-0.5">{field.unit}</span>}
-                  <span className="text-xs">order {field.order}</span>
+          {sorted.map((field, index) => (
+            <div key={field.id} className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {getHumanTypeLabel(field.type)}
+                </span>
+                <div>
+                  <p className="font-medium">
+                    {field.name}
+                    {field.required && <span className="ml-1 text-xs text-destructive">*</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{field.key}</p>
                 </div>
               </div>
-            ))}
+              <div className="flex items-center gap-1">
+                <div className="mr-2 flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleMoveUp(sorted, index)}
+                    disabled={index === 0}
+                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMoveDown(sorted, index)}
+                    disabled={index === sorted.length - 1}
+                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                </div>
+                <span className="mr-2 text-xs text-muted-foreground">
+                  {field.showInList && <span className="rounded bg-muted px-1.5 py-0.5">In list</span>}
+                  {field.unit && <span className="ml-1 rounded bg-muted px-1.5 py-0.5">{field.unit}</span>}
+                  <span className="ml-1">order {field.order}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleDuplicate(field)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  title="Duplicate"
+                >
+                  Dup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startEditing(field)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(field.id)}
+                  className="text-xs text-destructive hover:text-destructive/80"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

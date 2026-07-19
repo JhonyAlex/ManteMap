@@ -53,8 +53,10 @@ export function ItemList({
 }: ItemListProps) {
   const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
-  const { data: items, isLoading, error } = useItems({
+  const { data: items, isLoading, error, refetch } = useItems({
     projectId,
     itemTypeId,
     search: search || undefined,
@@ -79,6 +81,63 @@ export function ItemList({
   const handleNextPage = useCallback(() => {
     setPage((p) => p + 1);
   }, []);
+
+  // Checkbox handlers
+  const toggleItem = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (!items) return;
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map((item) => item.id)));
+    }
+  }, [items, selectedIds.size]);
+
+  // Batch delete
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} selected items? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsBatchDeleting(true);
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/items/${id}`, {
+          method: 'DELETE',
+        });
+        if (res.ok || res.status === 204) {
+          succeeded++;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    if (failed > 0) {
+      alert(`${succeeded} item(s) deleted successfully. ${failed} item(s) failed to delete.`);
+    }
+
+    setSelectedIds(new Set());
+    setIsBatchDeleting(false);
+    refetch();
+  }, [selectedIds, projectId, refetch]);
 
   // Loading state
   if (isLoading) {
@@ -112,6 +171,18 @@ export function ItemList({
           className="h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              disabled={isBatchDeleting}
+              className="inline-flex h-9 items-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              {isBatchDeleting
+                ? 'Deleting...'
+                : `Delete Selected (${selectedIds.size})`}
+            </button>
+          )}
           <Link
             href={`/projects/${projectId}/items/new?itemTypeId=${itemTypeId}`}
             className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -142,6 +213,14 @@ export function ItemList({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    checked={items ? selectedIds.size === items.length && items.length > 0 : false}
+                    onChange={toggleAll}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </TableHead>
                 {columns.map((col) => (
                   <TableHead key={col.key}>{col.label}</TableHead>
                 ))}
@@ -150,6 +229,14 @@ export function ItemList({
             <TableBody>
               {items.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleItem(item.id)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                  </TableCell>
                   <TableCell>
                     <Link
                       href={`/projects/${projectId}/items/${item.id}`}

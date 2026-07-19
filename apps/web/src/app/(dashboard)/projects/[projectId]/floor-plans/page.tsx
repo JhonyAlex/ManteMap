@@ -77,6 +77,7 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -274,6 +275,31 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
     setHeight('600');
     setSelectedFile(null);
     setErrors({});
+  }
+
+  async function handleDelete(planId: string, planName: string) {
+    if (!confirm(`Delete floor plan "${planName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingPlanId(planId);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/floor-plans/${planId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok || res.status === 204) {
+        fetchFloorPlans();
+        router.refresh();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(body.message || 'Failed to delete floor plan.');
+      }
+    } catch {
+      alert('An unexpected error occurred.');
+    } finally {
+      setDeletingPlanId(null);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -513,6 +539,14 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
                   >
                     View
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(plan.id, plan.name)}
+                    disabled={deletingPlanId === plan.id}
+                    className="rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    {deletingPlanId === plan.id ? 'Deleting...' : 'Delete'}
+                  </button>
                 </div>
               </div>
             </div>
