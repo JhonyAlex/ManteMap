@@ -146,6 +146,9 @@ describe('FloorPlanRepository findFloorPlansByLocation', () => {
     expect(mockPrismaClient.floorPlan.findMany).toHaveBeenCalledWith({
       where: { locationId: LOCATION_ID, active: true },
       orderBy: { createdAt: 'desc' },
+      include: {
+        location: { select: { id: true, name: true } },
+      },
     });
     expect(result).toHaveLength(1);
   });

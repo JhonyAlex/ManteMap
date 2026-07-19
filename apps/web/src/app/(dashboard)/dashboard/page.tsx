@@ -89,7 +89,6 @@ export default async function DashboardPage() {
           {projectsWithMetrics.map((project) => (
             <ProjectSummaryCard
               key={project.id}
-              projectId={project.id}
               projectCode={project.code}
               projectName={project.name}
               totalItems={project.totalItems}

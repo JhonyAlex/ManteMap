@@ -163,7 +163,7 @@ describe('ItemList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(document.querySelectorAll('[aria-hidden="true"].animate-pulse')).toHaveLength(4);
   });
 
   it('shows empty state when no items', () => {

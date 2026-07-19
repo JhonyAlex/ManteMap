@@ -18,7 +18,6 @@ import { ProjectSummaryCard } from '../project-summary-card';
 
 describe('ProjectSummaryCard', () => {
   const defaultProps = {
-    projectId: 'proj-1',
     projectCode: 'ALPHA',
     projectName: 'Alpha Project',
     totalItems: 42,
@@ -63,7 +62,7 @@ describe('ProjectSummaryCard', () => {
     render(<ProjectSummaryCard {...defaultProps} />);
 
     const link = screen.getByRole('link');
-    expect(link).toHaveAttribute('href', '/projects/proj-1/dashboard');
+    expect(link).toHaveAttribute('href', '/projects/ALPHA/dashboard');
   });
 
   it('renders zero counts', () => {

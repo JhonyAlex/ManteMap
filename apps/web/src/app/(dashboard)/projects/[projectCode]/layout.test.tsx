@@ -29,6 +29,7 @@ vi.mock('@/lib/auth/session', () => ({
 // Mock project service
 vi.mock('@/lib/services/project-service', () => ({
   getProjectById: vi.fn(),
+  resolveProjectId: vi.fn(),
 }));
 
 // Mock repositories
@@ -51,7 +52,6 @@ vi.mock('@mantemap/database', () => {
     event: { findMany: vi.fn() },
   };
   return { default: mockPrisma };
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });
 
 // Mock shared error
@@ -91,7 +91,7 @@ vi.mock('@/components/alerts/alert-bell', () => ({
 
 import ProjectLayout from './layout';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getProjectById } from '@/lib/services/project-service';
+import { getProjectById, resolveProjectId } from '@/lib/services/project-service';
 import { findFloorPlansByProject } from '@/lib/repositories/floor-plan-repository';
 import { findItemTypesByProject } from '@/lib/repositories/item-type-repository';
 import { findLocationsByProject } from '@/lib/repositories/location-repository';
@@ -99,6 +99,7 @@ import prisma from '@mantemap/database';
 
 const mockGetCurrentUser = getCurrentUser as Mock;
 const mockGetProjectById = getProjectById as Mock;
+const mockResolveProjectId = resolveProjectId as Mock;
 const mockFindFloorPlansByProject = findFloorPlansByProject as Mock;
 const mockFindItemTypesByProject = findItemTypesByProject as Mock;
 const mockFindLocationsByProject = findLocationsByProject as Mock;
@@ -120,6 +121,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentUser.mockResolvedValue(mockUser);
+    mockResolveProjectId.mockResolvedValue('proj-1');
     mockGetProjectById.mockResolvedValue({ project: mockProject });
     mockFindFloorPlansByProject.mockResolvedValue([]);
     mockFindItemTypesByProject.mockResolvedValue([]);
@@ -131,7 +133,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
   it('renders the project name in header', async () => {
     const ui = await ProjectLayout({
       children: <div>Content</div>,
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -141,7 +143,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
   it('renders breadcrumbs component', async () => {
     const ui = await ProjectLayout({
       children: <div>Content</div>,
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -151,7 +153,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
   it('passes project name to breadcrumbs projectNames', async () => {
     const ui = await ProjectLayout({
       children: <div>Content</div>,
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -164,7 +166,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
   it('passes empty entity maps when no entities exist', async () => {
     const ui = await ProjectLayout({
       children: <div>Content</div>,
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -197,7 +199,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
 
     const ui = await ProjectLayout({
       children: <div>Content</div>,
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -214,7 +216,7 @@ describe('ProjectLayout — breadcrumbs with entity maps', () => {
   it('renders children inside the layout', async () => {
     const ui = await ProjectLayout({
       children: <div>Child Content</div>,
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 

@@ -86,13 +86,14 @@ describe('LoginPage', () => {
       expect(mockSignIn).toHaveBeenCalledWith('credentials', expect.objectContaining({
         email: 'test@example.com',
         password: 'Password123',
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/dashboard',
       }));
     });
   });
 
-  it('shows error message on failed login', async () => {
-    mockSignIn.mockResolvedValue({ ok: false, error: 'CredentialsSignin' });
+  it('shows a fallback error when sign-in fails before the server redirect', async () => {
+    mockSignIn.mockRejectedValue(new Error('Network failure'));
     const user = userEvent.setup();
     render(<LoginPage />);
 
@@ -101,7 +102,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /sign in|log in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/invalid.*email.*password|incorrect|sign.*in.*failed/i)).toBeInTheDocument();
+      expect(screen.getByText(/unexpected error.*try again/i)).toBeInTheDocument();
     });
   });
 
@@ -140,7 +141,7 @@ describe('LoginPage', () => {
   });
 
   it('re-enables the submit button after failed sign-in', async () => {
-    mockSignIn.mockResolvedValue({ ok: false, error: 'CredentialsSignin' });
+    mockSignIn.mockRejectedValue(new Error('Network failure'));
     const user = userEvent.setup();
     render(<LoginPage />);
 
@@ -154,8 +155,8 @@ describe('LoginPage', () => {
     });
   });
 
-  it('shows error alert with role="alert" on failed sign-in', async () => {
-    mockSignIn.mockResolvedValue({ ok: false, error: 'CredentialsSignin' });
+  it('uses an accessible alert for pre-redirect sign-in failures', async () => {
+    mockSignIn.mockRejectedValue(new Error('Network failure'));
     const user = userEvent.setup();
     render(<LoginPage />);
 
@@ -165,7 +166,7 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       const alert = screen.getByRole('alert');
-      expect(alert).toHaveTextContent(/invalid.*email.*password/i);
+      expect(alert).toHaveTextContent(/unexpected error.*try again/i);
     });
   });
 });

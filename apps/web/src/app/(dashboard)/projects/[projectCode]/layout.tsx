@@ -12,7 +12,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getProjectByCode } from '@/lib/services/project-service';
+import { getProjectById, resolveProjectId } from '@/lib/services/project-service';
 import { NotFoundError } from '@mantemap/shared';
 import { AlertBell } from '@/components/alerts/alert-bell';
 import { Breadcrumbs, type EntityMaps } from '@/components/layout/breadcrumbs';
@@ -37,7 +37,8 @@ export default async function ProjectLayout({
 
   let project;
   try {
-    const result = await getProjectByCode(projectCode, user.id);
+    const projectId = await resolveProjectId(projectCode);
+    const result = await getProjectById(projectId, user.id);
     project = result.project;
   } catch (error) {
     if (error instanceof NotFoundError) {

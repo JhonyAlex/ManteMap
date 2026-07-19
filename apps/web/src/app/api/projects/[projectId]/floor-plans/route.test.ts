@@ -117,13 +117,15 @@ describe('GET /api/projects/[projectId]/floor-plans', () => {
     expect(response.status).toBe(401);
   });
 
-  it('returns 400 when locationId is missing', async () => {
+  it('returns all project floor plans when locationId is missing', async () => {
     mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockListFloorPlans.mockResolvedValue({ floorPlans: [] });
 
     const req = new Request(`http://localhost/api/projects/${PROJECT_ID}/floor-plans`);
     const response = await GET(req, { params: Promise.resolve(makeParams()) });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
+    expect(mockListFloorPlans).toHaveBeenCalledWith(PROJECT_ID, null, USER_ID);
   });
 });
 

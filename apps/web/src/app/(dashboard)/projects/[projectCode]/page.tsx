@@ -1,8 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getProjectByCode } from '@/lib/services/project-service';
+import { getProjectById, resolveProjectId } from '@/lib/services/project-service';
 import { getProjectMetrics } from '@/lib/services/metrics-service';
 import { NotFoundError } from '@mantemap/shared';
 import { ProjectSettings } from '@/components/project-settings';
@@ -54,18 +54,23 @@ export default async function ProjectPage({ params }: ProjectHubPageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
-    notFound();
+    return notFound();
   }
 
   let project;
   try {
-    const result = await getProjectByCode(projectCode, user.id);
+    const projectId = await resolveProjectId(projectCode);
+    const result = await getProjectById(projectId, user.id);
     project = result.project;
   } catch (error) {
     if (error instanceof NotFoundError) {
-      notFound();
+      return notFound();
     }
     throw error;
+  }
+
+  if (projectCode !== project.code) {
+    return permanentRedirect(`/projects/${project.code}`);
   }
 
   let metrics;

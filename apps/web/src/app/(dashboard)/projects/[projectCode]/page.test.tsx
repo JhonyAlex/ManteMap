@@ -1,50 +1,51 @@
 // @vitest-environment jsdom
-/**
- * RED tests for Project page.
- *
- * Verifies:
- *   - Renders project details for accessible projects
- *   - Shows not-found for inaccessible projects (non-member)
- *   - Shows not-found for non-existent projects
- *   - No project data is leaked to non-members
- *
- * Spec: specs/application-shell/spec.md — "Inaccessible context"
- * Design: design.md — "Non-members receive 404 to avoid disclosing project existence"
- */
 
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 
-// Mock next/navigation
-vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(),
-  usePathname: vi.fn(),
-  notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }),
+const { mockNotFound, mockPermanentRedirect } = vi.hoisted(() => ({
+  mockNotFound: vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+  mockPermanentRedirect: vi.fn(() => {
+    throw new Error('NEXT_REDIRECT');
+  }),
 }));
 
-// Mock auth/session
+vi.mock('next/navigation', () => ({
+  notFound: mockNotFound,
+  permanentRedirect: mockPermanentRedirect,
+}));
+
 vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: vi.fn(),
 }));
 
-// Mock project service
 vi.mock('@/lib/services/project-service', () => ({
   getProjectById: vi.fn(),
+  resolveProjectId: vi.fn(),
 }));
 
-// Mock next-auth/react
-vi.mock('next-auth/react', () => ({
-  useSession: vi.fn(),
+vi.mock('@/lib/services/metrics-service', () => ({
+  getProjectMetrics: vi.fn(),
+}));
+
+vi.mock('@/components/project-settings', () => ({
+  ProjectSettings: ({ projectId }: { projectId: string }) => (
+    <div data-testid="project-settings">{projectId}</div>
+  ),
 }));
 
 import ProjectPage from './page';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getProjectById } from '@/lib/services/project-service';
-import { useSession } from 'next-auth/react';
+import { getProjectById, resolveProjectId } from '@/lib/services/project-service';
+import { getProjectMetrics } from '@/lib/services/metrics-service';
 
 const mockGetCurrentUser = getCurrentUser as Mock;
 const mockGetProjectById = getProjectById as Mock;
-const mockUseSession = useSession as Mock;
+const mockResolveProjectId = resolveProjectId as Mock;
+const mockGetProjectMetrics = getProjectMetrics as Mock;
 
 const mockUser = {
   id: 'user-1',
@@ -68,72 +69,85 @@ describe('ProjectPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentUser.mockResolvedValue(mockUser);
-    mockUseSession.mockReturnValue({
-      data: { user: mockUser },
-      status: 'authenticated',
+    mockResolveProjectId.mockResolvedValue('proj-1');
+    mockGetProjectById.mockResolvedValue({ project: mockProject });
+    mockGetProjectMetrics.mockResolvedValue({
+      totalItems: 3,
+      activeAlerts: 1,
+      documentsExpiringSoon: 2,
     });
   });
 
-  it('renders project name for accessible projects', async () => {
-    mockGetProjectById.mockResolvedValue({ project: mockProject });
-
-    const ui = await ProjectPage({ params: Promise.resolve({ projectId: 'proj-1' }) });
+  it('renders the project hub for the canonical code URL', async () => {
+    const ui = await ProjectPage({
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
+    });
     render(ui);
 
-    expect(screen.getByText('Alpha Project')).toBeInTheDocument();
+    expect(screen.getByText('Test project description')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quick Actions' })).toBeInTheDocument();
+    expect(screen.getByTestId('project-settings')).toHaveTextContent('proj-1');
+    expect(mockPermanentRedirect).not.toHaveBeenCalled();
   });
 
-  it('renders project code for accessible projects', async () => {
-    mockGetProjectById.mockResolvedValue({ project: mockProject });
+  it('resolves the route parameter before loading membership-scoped data', async () => {
+    await ProjectPage({ params: Promise.resolve({ projectCode: 'ALPHA' }) });
 
-    const ui = await ProjectPage({ params: Promise.resolve({ projectId: 'proj-1' }) });
-    render(ui);
-
-    // Code appears in both the header badge and the details section
-    const codeElements = screen.getAllByText('ALPHA');
-    expect(codeElements.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('calls getProjectById with correct project and user IDs', async () => {
-    mockGetProjectById.mockResolvedValue({ project: mockProject });
-
-    await ProjectPage({ params: Promise.resolve({ projectId: 'proj-1' }) });
-
+    expect(mockResolveProjectId).toHaveBeenCalledWith('ALPHA');
     expect(mockGetProjectById).toHaveBeenCalledWith('proj-1', 'user-1');
   });
 
-  it('shows not-found for inaccessible projects (non-member)', async () => {
-    // getProjectById throws NotFoundError for non-members (hides project existence)
-    const { NotFoundError } = await import('@mantemap/shared');
-    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'proj-999'));
+  it('uses the canonical project code in quick-action links', async () => {
+    const ui = await ProjectPage({
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
+    });
+    render(ui);
+
+    expect(screen.getByRole('link', { name: /dashboard/i })).toHaveAttribute(
+      'href',
+      '/projects/ALPHA/dashboard'
+    );
+  });
+
+  it('permanently redirects a legacy CUID base URL to the code URL', async () => {
+    await expect(
+      ProjectPage({ params: Promise.resolve({ projectCode: 'proj-1' }) })
+    ).rejects.toThrow('NEXT_REDIRECT');
+
+    expect(mockResolveProjectId).toHaveBeenCalledWith('proj-1');
+    expect(mockPermanentRedirect).toHaveBeenCalledWith('/projects/ALPHA');
+  });
+
+  it('returns not-found for an unauthenticated request without resolving the project', async () => {
+    mockGetCurrentUser.mockResolvedValue(null);
 
     await expect(
-      ProjectPage({ params: Promise.resolve({ projectId: 'proj-999' }) })
+      ProjectPage({ params: Promise.resolve({ projectCode: 'ALPHA' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND');
+
+    expect(mockResolveProjectId).not.toHaveBeenCalled();
   });
 
-  it('shows not-found for non-existent projects', async () => {
+  it('returns not-found when the code or CUID cannot be resolved', async () => {
     const { NotFoundError } = await import('@mantemap/shared');
-    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'nonexistent'));
+    mockResolveProjectId.mockRejectedValue(new NotFoundError('Project', 'missing'));
 
     await expect(
-      ProjectPage({ params: Promise.resolve({ projectId: 'nonexistent' }) })
+      ProjectPage({ params: Promise.resolve({ projectCode: 'missing' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND');
+
+    expect(mockGetProjectById).not.toHaveBeenCalled();
   });
 
-  it('does not leak project data to non-members', async () => {
+  it('does not leak project content when membership lookup returns not-found', async () => {
     const { NotFoundError } = await import('@mantemap/shared');
-    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'proj-999'));
+    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'proj-1'));
 
-    try {
-      await ProjectPage({ params: Promise.resolve({ projectId: 'proj-999' }) });
-    } catch {
-      // Expected — not-found is thrown
-    }
+    await expect(
+      ProjectPage({ params: Promise.resolve({ projectCode: 'ALPHA' }) })
+    ).rejects.toThrow('NEXT_NOT_FOUND');
 
-    // The page should NOT render any project content
-    expect(screen.queryByText('Alpha Project')).not.toBeInTheDocument();
-    expect(screen.queryByText('ALPHA')).not.toBeInTheDocument();
+    expect(screen.queryByText('Test project description')).not.toBeInTheDocument();
+    expect(mockPermanentRedirect).not.toHaveBeenCalled();
   });
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });

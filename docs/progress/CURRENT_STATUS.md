@@ -1,6 +1,6 @@
 # Estado actual — ManteMap
 
-> Última actualización: 2026-07-18
+> Última actualización: 2026-07-19
 
 ---
 
@@ -78,7 +78,14 @@
 
 - Known: Windows production build may fail at standalone symlink creation with `EPERM`.
 - Known: @mantemap/ui tiene error de typecheck pre-existente (@/lib/utils resolution).
-- Known: 51 integration tests requieren Docker/DB (pre-existente).
+- Known: 51 tests de integración requieren una PostgreSQL de pruebas aislada; la suite offline queda en 2,172 passed, 51 failed y 44 skipped. Ver `docs/testing/database-test-isolation.md`.
+
+## Última validación de remediación
+
+- ✅ Corregidos los parse errors de cinco tests que bloqueaban TypeScript y Dokploy.
+- ✅ Eliminado el conflicto de segmentos hermanos `[projectCode]` / `[projectId]`; la ruta única acepta ambos identificadores y canonicaliza el CUID base con 308.
+- ✅ `pnpm --filter @mantemap/web typecheck` pasa.
+- ⚠️ `pnpm --filter @mantemap/web test`: 2,172 passed, 51 DB-dependent failed, 44 skipped (2,267 total).
 
 ---
 

@@ -34,9 +34,9 @@ vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: vi.fn(),
 }));
 
-// Mock the project service
-vi.mock('@/lib/services/project-service', () => ({
-  listProjects: vi.fn(),
+// Mock the dashboard service
+vi.mock('@/lib/services/dashboard-service', () => ({
+  getDashboardProjects: vi.fn(),
 }));
 
 // Mock next/dynamic or child components that are client-only
@@ -68,12 +68,12 @@ vi.mock('@/components/layout/breadcrumbs', () => ({
 
 import DashboardLayout from './layout';
 import { getCurrentUser } from '@/lib/auth/session';
-import { listProjects } from '@/lib/services/project-service';
+import { getDashboardProjects } from '@/lib/services/dashboard-service';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 const mockGetCurrentUser = getCurrentUser as Mock;
-const mockListProjects = listProjects as Mock;
+const mockGetDashboardProjects = getDashboardProjects as Mock;
 const mockUsePathname = usePathname as Mock;
 const mockUseSession = useSession as Mock;
 
@@ -92,7 +92,7 @@ describe('DashboardLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentUser.mockResolvedValue(mockUser);
-    mockListProjects.mockResolvedValue({ projects: mockProjects });
+    mockGetDashboardProjects.mockResolvedValue({ projects: mockProjects });
     mockUsePathname.mockReturnValue('/dashboard');
     mockUseSession.mockReturnValue({
       data: { user: mockUser },
@@ -141,10 +141,10 @@ describe('DashboardLayout', () => {
     expect(screen.getByTestId('breadcrumbs')).toBeInTheDocument();
   });
 
-  it('calls listProjects with the current user ID', async () => {
+  it('calls getDashboardProjects with the current user ID', async () => {
     await DashboardLayout({ children: <div>Content</div> });
 
-    expect(mockListProjects).toHaveBeenCalledWith('user-1');
+    expect(mockGetDashboardProjects).toHaveBeenCalledWith('user-1');
   });
 
   it('renders the membership-scoped background with an id for drawer inertness', async () => {
@@ -153,5 +153,4 @@ describe('DashboardLayout', () => {
 
     expect(document.getElementById('dashboard-background')).toBeInTheDocument();
   });
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });

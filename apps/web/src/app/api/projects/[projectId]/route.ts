@@ -23,7 +23,8 @@ export async function GET(
 
   try {
     const { projectId } = await params;
-    const result = await getProjectById(projectId, auth.user.id);
+    const resolvedProjectId = await resolveProjectId(projectId);
+    const result = await getProjectById(resolvedProjectId, auth.user.id);
 
     const response: ApiResponse = {
       data: result.project,
@@ -56,6 +57,7 @@ export async function PATCH(
 
   try {
     const { projectId } = await params;
+    const resolvedProjectId = await resolveProjectId(projectId);
 
     let body: unknown;
     try {
@@ -75,7 +77,7 @@ export async function PATCH(
       return badRequest('At least one field must be provided for update');
     }
 
-    const result = await updateProject(projectId, parsed.data, auth.user.id);
+    const result = await updateProject(resolvedProjectId, parsed.data, auth.user.id);
 
     const response: ApiResponse = {
       data: result.project,

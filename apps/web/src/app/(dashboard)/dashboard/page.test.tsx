@@ -25,11 +25,6 @@ vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: vi.fn(),
 }));
 
-// Mock project service
-vi.mock('@/lib/services/project-service', () => ({
-  listProjects: vi.fn(),
-}));
-
 // Mock dashboard service
 vi.mock('@/lib/services/dashboard-service', () => ({
   getDashboardProjects: vi.fn(),
@@ -128,5 +123,4 @@ describe('DashboardPage', () => {
 
     expect(mockGetDashboardProjects).toHaveBeenCalledWith('user-1');
   });
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });

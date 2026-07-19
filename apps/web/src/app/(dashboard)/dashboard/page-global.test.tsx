@@ -26,11 +26,6 @@ vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: vi.fn(),
 }));
 
-// Mock project service
-vi.mock('@/lib/services/project-service', () => ({
-  listProjects: vi.fn(),
-}));
-
 // Mock dashboard service
 vi.mock('@/lib/services/dashboard-service', () => ({
   getDashboardProjects: vi.fn(),
@@ -117,5 +112,4 @@ describe('Global Dashboard Page — Cross-Project Summaries', () => {
     expect(screen.getByText('ALPHA')).toBeInTheDocument();
     expect(screen.getByText('BETA')).toBeInTheDocument();
   });
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });

@@ -22,7 +22,8 @@ export async function POST(
 
   try {
     const { projectId } = await params;
-    const result = await archiveProject(projectId, auth.user.id);
+    const resolvedProjectId = await resolveProjectId(projectId);
+    const result = await archiveProject(resolvedProjectId, auth.user.id);
 
     const response: ApiResponse = {
       data: result.project,

@@ -13,7 +13,7 @@
  * Design: design.md — "New: getProjectByCode"
  */
 
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi, type Mock } from 'vitest';
 import { NotFoundError } from '@mantemap/shared';
 
 // ── Mock repository ──────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock the service layer
 vi.mock('@/lib/services/project-service', () => ({
   archiveProject: vi.fn(),
+  resolveProjectId: vi.fn(),
 }));
 
 // Mock the auth session
@@ -22,7 +23,7 @@ vi.mock('@/lib/auth/session', () => ({
   getAuthUser: vi.fn(),
 }));
 
-import { archiveProject } from '@/lib/services/project-service';
+import { archiveProject, resolveProjectId } from '@/lib/services/project-service';
 import { getAuthUser } from '@/lib/auth/session';
 import { unauthorized } from '@/lib/http/api-error';
 import { POST } from './route';
@@ -59,6 +60,7 @@ const params = { params: Promise.resolve({ projectId: 'proj-1' }) };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  (resolveProjectId as ReturnType<typeof vi.fn>).mockResolvedValue('resolved-proj-1');
 });
 
 // ===========================================================================
@@ -157,6 +159,8 @@ describe('POST /api/projects/[projectId]/archive — success', () => {
     expect(body.data.id).toBe('proj-1');
     expect(body.data.status).toBe('ARCHIVED');
     expect(body.message).toBe('Project archived successfully');
+    expect(resolveProjectId).toHaveBeenCalledWith('proj-1');
+    expect(archiveProject).toHaveBeenCalledWith('resolved-proj-1', 'user-1');
   });
 });
 

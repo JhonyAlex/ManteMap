@@ -241,7 +241,7 @@ describe('Sidebar', () => {
 
       const links = screen.getAllByRole('link');
       links.forEach((link) => {
-        expect(link.textContent).toBeTruthy();
+        expect(link).toHaveAccessibleName();
       });
     });
 
@@ -264,9 +264,9 @@ describe('Sidebar', () => {
       const toggle = screen.getByRole('button', { name: /toggle menu/i });
       await user.click(toggle);
 
-      // After opening, the first project link should receive focus
-      const firstLink = screen.getByRole('link', { name: /alpha project/i });
-      expect(firstLink).toHaveFocus();
+      // The icon-only create action is the first real control in the drawer.
+      const firstControl = screen.getByRole('link', { name: /new project/i });
+      expect(firstControl).toHaveFocus();
     });
 
     it('focus returns to toggle button when mobile menu closes via Escape', async () => {

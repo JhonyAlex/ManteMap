@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Protected navigation shell with sidebar, breadcrumbs, and project routing. Breadcrumbs MUST resolve human-readable names for all entity types. Project page routes MUST use `project.code` instead of raw `project.id` CUIDs.
+Protected navigation shell with sidebar, breadcrumbs, and canonical project routing. Breadcrumbs MUST resolve human-readable names for all entity types. Project page routes MUST expose `project.code` while temporarily accepting legacy `project.id` CUIDs through the same dynamic segment.
 
 ## Requirements
 
@@ -40,7 +40,7 @@ Entity name maps SHALL be fetched server-side in the dashboard layout and passed
 
 ### Requirement: Project routes use code
 
-All page routes under `(dashboard)/projects/` MUST use `[projectCode]` dynamic segment instead of `[projectId]`. The `project.code` field is `@unique` and already exists — no DB migration is needed.
+All page routes under `(dashboard)/projects/` MUST use the single `[projectCode]` dynamic segment. The segment SHALL resolve either a unique `project.code` or a legacy project CUID to the internal project ID. The `project.code` field is `@unique` and already exists — no DB migration is needed.
 
 Sidebar links and all internal navigation SHALL use `project.code` when building project URLs (e.g., `/projects/MAP-001/items`).
 
@@ -57,15 +57,17 @@ Sidebar links and all internal navigation SHALL use `project.code` when building
 - WHEN links are rendered
 - THEN all links use the project's code (e.g., `/projects/FAC-2024/items`)
 
-### Requirement: Project CUID redirect backward compatibility
+### Requirement: Project CUID backward compatibility
 
-The system MUST provide a redirect route at `(dashboard)/projects/[projectId]/` that resolves the CUID to its project code and issues a 301 redirect to `(dashboard)/projects/[projectCode]/`. This SHALL preserve existing bookmarks and external links.
+The base project page MUST resolve a legacy CUID through `(dashboard)/projects/[projectCode]/` and issue a permanent 308 redirect to the canonical code URL. Invalid codes and CUIDs MUST return 404 without falling through to project rendering.
+
+Nested legacy links MAY continue to resolve a CUID through the shared `[projectCode]` segment during the compatibility period. This specification does not require nested paths to redirect or preserve their suffix; internal navigation MUST generate code-based URLs.
 
 #### Scenario: Old CUID URL redirects
 
-- GIVEN a user with a bookmark to `/projects/clxabc.../floor-plans`
+- GIVEN a user with a bookmark to `/projects/clxabc...`
 - WHEN the browser navigates to that URL
-- THEN the server returns 301 redirect to `/projects/MAP-001/floor-plans`
+- THEN the server returns a permanent 308 redirect to `/projects/MAP-001`
 
 #### Scenario: Invalid CUID returns 404
 

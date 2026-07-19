@@ -44,16 +44,22 @@ vi.mock('@/lib/services/floor-plan-service', () => ({
   listMarkers: vi.fn(),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn(),
+}));
+
 // Mock FloorPlanViewer (Konva won't work in jsdom)
 vi.mock('@/components/floor-plans/floor-plan-viewer', mockViewerFactory);
 
 import FloorPlanViewPage from './page';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getFloorPlan, listMarkers } from '@/lib/services/floor-plan-service';
+import { resolveProjectId } from '@/lib/services/project-service';
 
 const mockGetCurrentUser = getCurrentUser as Mock;
 const mockGetFloorPlan = getFloorPlan as Mock;
 const mockListMarkers = listMarkers as Mock;
+const mockResolveProjectId = resolveProjectId as Mock;
 
 const mockUser = {
   id: 'user-1',
@@ -99,13 +105,14 @@ describe('FloorPlanViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentUser.mockResolvedValue(mockUser);
+    mockResolveProjectId.mockResolvedValue('proj-1');
     mockGetFloorPlan.mockResolvedValue({ floorPlan: mockFloorPlan });
     mockListMarkers.mockResolvedValue({ markers: mockMarkers });
   });
 
   it('renders the floor plan name as page title', async () => {
     const ui = await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
     render(ui);
 
@@ -114,7 +121,7 @@ describe('FloorPlanViewPage', () => {
 
   it('renders the FloorPlanViewer component', async () => {
     const ui = await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
     render(ui);
 
@@ -123,7 +130,7 @@ describe('FloorPlanViewPage', () => {
 
   it('passes API endpoint URL as imageUrl prop', async () => {
     const ui = await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
     render(ui);
 
@@ -134,7 +141,7 @@ describe('FloorPlanViewPage', () => {
 
   it('passes floor plan dimensions to viewer', async () => {
     const ui = await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
     render(ui);
 
@@ -146,7 +153,7 @@ describe('FloorPlanViewPage', () => {
 
   it('passes markers to viewer', async () => {
     const ui = await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
     render(ui);
 
@@ -158,7 +165,7 @@ describe('FloorPlanViewPage', () => {
 
   it('calls getFloorPlan with correct IDs', async () => {
     await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
 
     expect(mockGetFloorPlan).toHaveBeenCalledWith('proj-1', 'fp-1', 'user-1');
@@ -166,7 +173,7 @@ describe('FloorPlanViewPage', () => {
 
   it('calls listMarkers with correct IDs', async () => {
     await FloorPlanViewPage({
-      params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
     });
 
     expect(mockListMarkers).toHaveBeenCalledWith('proj-1', 'fp-1', 'user-1');
@@ -177,7 +184,7 @@ describe('FloorPlanViewPage', () => {
 
     await expect(
       FloorPlanViewPage({
-        params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+        params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
       })
     ).rejects.toThrow('NEXT_NOT_FOUND');
   });
@@ -188,7 +195,7 @@ describe('FloorPlanViewPage', () => {
 
     await expect(
       FloorPlanViewPage({
-        params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-nonexistent' }),
+        params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-nonexistent' }),
       })
     ).rejects.toThrow('NEXT_NOT_FOUND');
   });
@@ -199,7 +206,7 @@ describe('FloorPlanViewPage', () => {
 
     await expect(
       FloorPlanViewPage({
-        params: Promise.resolve({ projectId: 'proj-1', floorPlanId: 'fp-1' }),
+        params: Promise.resolve({ projectCode: 'ALPHA', floorPlanId: 'fp-1' }),
       })
     ).rejects.toThrow('NEXT_NOT_FOUND');
   });

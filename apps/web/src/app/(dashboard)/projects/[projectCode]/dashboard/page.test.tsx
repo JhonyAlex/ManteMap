@@ -32,6 +32,10 @@ vi.mock('@/lib/services/metrics-service', () => ({
   getRecentActivity: vi.fn(),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn(),
+}));
+
 // Mock next-auth/react
 vi.mock('next-auth/react', () => ({
   useSession: vi.fn(),
@@ -40,11 +44,13 @@ vi.mock('next-auth/react', () => ({
 import ProjectDashboardPage from './page';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getProjectMetrics, getRecentActivity } from '@/lib/services/metrics-service';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { useSession } from 'next-auth/react';
 
 const mockGetCurrentUser = getCurrentUser as Mock;
 const mockGetProjectMetrics = getProjectMetrics as Mock;
 const mockGetRecentActivity = getRecentActivity as Mock;
+const mockResolveProjectId = resolveProjectId as Mock;
 const mockUseSession = useSession as Mock;
 
 const mockUser = {
@@ -85,6 +91,7 @@ describe('ProjectDashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentUser.mockResolvedValue(mockUser);
+    mockResolveProjectId.mockResolvedValue('proj-1');
     mockGetProjectMetrics.mockResolvedValue(mockMetrics);
     mockGetRecentActivity.mockResolvedValue(mockActivity);
     mockUseSession.mockReturnValue({
@@ -95,7 +102,7 @@ describe('ProjectDashboardPage', () => {
 
   it('renders project metrics for authorized member', async () => {
     const ui = await ProjectDashboardPage({
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -107,7 +114,7 @@ describe('ProjectDashboardPage', () => {
 
   it('renders activity timeline', async () => {
     const ui = await ProjectDashboardPage({
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -116,7 +123,7 @@ describe('ProjectDashboardPage', () => {
 
   it('renders CSV export links', async () => {
     const ui = await ProjectDashboardPage({
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 
@@ -127,15 +134,16 @@ describe('ProjectDashboardPage', () => {
 
   it('calls getProjectMetrics with correct project and user IDs', async () => {
     await ProjectDashboardPage({
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
 
     expect(mockGetProjectMetrics).toHaveBeenCalledWith('proj-1', 'user-1');
+    expect(mockResolveProjectId).toHaveBeenCalledWith('ALPHA');
   });
 
   it('calls getRecentActivity with correct project and user IDs', async () => {
     await ProjectDashboardPage({
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
 
     expect(mockGetRecentActivity).toHaveBeenCalledWith('proj-1', 'user-1');
@@ -147,14 +155,14 @@ describe('ProjectDashboardPage', () => {
 
     await expect(
       ProjectDashboardPage({
-        params: Promise.resolve({ projectId: 'proj-999' }),
+        params: Promise.resolve({ projectCode: 'UNKNOWN' }),
       })
     ).rejects.toThrow('NEXT_NOT_FOUND');
   });
 
   it('renders a page heading', async () => {
     const ui = await ProjectDashboardPage({
-      params: Promise.resolve({ projectId: 'proj-1' }),
+      params: Promise.resolve({ projectCode: 'ALPHA' }),
     });
     render(ui);
 

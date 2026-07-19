@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('@/lib/services/project-service', () => ({
   getProjectById: vi.fn(),
   updateProject: vi.fn(),
+  resolveProjectId: vi.fn(),
 }));
 
 // Mock the auth session
@@ -25,7 +26,7 @@ vi.mock('@/lib/auth/session', () => ({
   getAuthUser: vi.fn(),
 }));
 
-import { getProjectById, updateProject } from '@/lib/services/project-service';
+import { getProjectById, updateProject, resolveProjectId } from '@/lib/services/project-service';
 import { getAuthUser } from '@/lib/auth/session';
 import { unauthorized } from '@/lib/http/api-error';
 import { GET, PATCH } from './route';
@@ -70,6 +71,7 @@ const params = { params: Promise.resolve({ projectId: 'proj-1' }) };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  (resolveProjectId as ReturnType<typeof vi.fn>).mockResolvedValue('resolved-proj-1');
 });
 
 // ===========================================================================
@@ -147,6 +149,8 @@ describe('GET /api/projects/[projectId] — success', () => {
     expect(body.data.id).toBe('proj-1');
     expect(body.data.code).toBe('TEST-PROJECT');
     expect(body.data.name).toBe('Test Project');
+    expect(resolveProjectId).toHaveBeenCalledWith('proj-1');
+    expect(getProjectById).toHaveBeenCalledWith('resolved-proj-1', 'user-1');
   });
 });
 
@@ -306,6 +310,12 @@ describe('PATCH /api/projects/[projectId] — success', () => {
     expect(body.data).toBeDefined();
     expect(body.data.name).toBe('Updated Name');
     expect(body.message).toBe('Project updated successfully');
+    expect(resolveProjectId).toHaveBeenCalledWith('proj-1');
+    expect(updateProject).toHaveBeenCalledWith(
+      'resolved-proj-1',
+      { name: 'Updated Name' },
+      'user-1'
+    );
   });
 });
 

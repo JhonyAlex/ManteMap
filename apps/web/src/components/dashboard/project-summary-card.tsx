@@ -22,7 +22,6 @@ import {
 } from '@mantemap/ui';
 
 interface ProjectSummaryCardProps {
-  projectId: string;
   projectCode: string;
   projectName: string;
   totalItems: number;
@@ -31,7 +30,6 @@ interface ProjectSummaryCardProps {
 }
 
 export function ProjectSummaryCard({
-  projectId,
   projectCode,
   projectName,
   totalItems,
