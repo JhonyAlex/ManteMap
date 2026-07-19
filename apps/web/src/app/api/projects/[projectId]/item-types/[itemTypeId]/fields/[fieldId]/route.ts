@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { updateDynamicFieldSchema } from '@mantemap/validation';
 import { AuthorizationError, ConflictError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, conflict, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { deactivateField, getField, updateField } from '@/lib/services/dynamic-field-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -12,7 +13,8 @@ export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, fieldId, itemTypeId } = await params;
+    const { projectId: rawProjectIdentifier, fieldId, itemTypeId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await getField(projectId, fieldId, itemTypeId, auth.user.id);
     return NextResponse.json({ data: result } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -29,7 +31,8 @@ export async function PATCH(request: Request, { params }: Params) {
     try { body = await request.json(); } catch { return badRequest('Invalid JSON in request body'); }
     const parsed = updateDynamicFieldSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid field data');
-    const { projectId, fieldId, itemTypeId } = await params;
+    const { projectId: rawProjectIdentifier, fieldId, itemTypeId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await updateField(projectId, fieldId, parsed.data, itemTypeId, auth.user.id);
     return NextResponse.json({ data: result, message: 'Field updated successfully' } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -45,7 +48,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, fieldId, itemTypeId } = await params;
+    const { projectId: rawProjectIdentifier, fieldId, itemTypeId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await deactivateField(projectId, fieldId, itemTypeId, auth.user.id);
     return NextResponse.json({ data: result, message: 'Field deactivated successfully' } satisfies ApiResponse);
   } catch (error: unknown) {

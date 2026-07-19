@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { alertTypeEnum } from '@mantemap/validation';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { getPreferences, updatePreference } from '@/lib/services/alert-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -13,7 +14,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const preferences = await getPreferences(projectId, auth.user.id);
     return NextResponse.json({ data: preferences } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -30,7 +32,8 @@ export async function PUT(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
 
     let body: unknown;
     try {

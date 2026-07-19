@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, notFound, internalError } from '@/lib/http/api-error';
 import { exportProjectCsv } from '@/lib/services/metrics-service';
 import { NotFoundError } from '@mantemap/shared';
@@ -46,7 +47,8 @@ export async function GET(
   }
 
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const csvContent = await exportProjectCsv(projectId, auth.user.id, type);
 
     return new NextResponse(csvContent, {

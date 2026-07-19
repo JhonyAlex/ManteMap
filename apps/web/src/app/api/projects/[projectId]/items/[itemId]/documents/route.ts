@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound, payloadTooLarge, unsupportedMediaType } from '@/lib/http/api-error';
 import { uploadDocument, listDocuments } from '@/lib/services/document-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -12,7 +13,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, itemId } = await params;
+    const { projectId: rawProjectIdentifier, itemId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await listDocuments(projectId, itemId, auth.user.id);
     return NextResponse.json({ data: result.documents } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -29,7 +31,8 @@ export async function POST(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, itemId } = await params;
+    const { projectId: rawProjectIdentifier, itemId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
 
     // Parse multipart form data
     let formData: FormData;

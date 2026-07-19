@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createEventSchema } from '@mantemap/validation';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { createEvent, getEventsInRange } from '@/lib/services/event-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -13,7 +14,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const url = new URL(request.url);
     const start = url.searchParams.get('start');
     const end = url.searchParams.get('end');
@@ -60,7 +62,8 @@ export async function POST(
     }
     const parsed = createEventSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid event data');
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await createEvent(projectId, parsed.data, auth.user.id);
     return NextResponse.json(
       { data: result.event, message: 'Event created successfully' } satisfies ApiResponse,

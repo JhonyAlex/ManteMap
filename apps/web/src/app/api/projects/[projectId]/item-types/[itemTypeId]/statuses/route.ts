@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createStatusSchema } from '@mantemap/validation';
 import { AuthorizationError, ConflictError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, conflict, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { createStatus, listStatuses } from '@/lib/services/status-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -12,7 +13,8 @@ export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, itemTypeId } = await params;
+    const { projectId: rawProjectIdentifier, itemTypeId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await listStatuses(projectId, itemTypeId, auth.user.id);
     return NextResponse.json({ data: result } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -29,7 +31,8 @@ export async function POST(request: Request, { params }: Params) {
     try { body = await request.json(); } catch { return badRequest('Invalid JSON in request body'); }
     const parsed = createStatusSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid status data');
-    const { projectId, itemTypeId } = await params;
+    const { projectId: rawProjectIdentifier, itemTypeId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await createStatus(projectId, parsed.data, itemTypeId, auth.user.id);
     return NextResponse.json({ data: result, message: 'Status created successfully' } satisfies ApiResponse, { status: 201 });
   } catch (error: unknown) {

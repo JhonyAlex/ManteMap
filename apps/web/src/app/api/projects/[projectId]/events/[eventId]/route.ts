@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { updateEventSchema } from '@mantemap/validation';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { getEvent, updateEvent, deleteEvent } from '@/lib/services/event-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -12,7 +13,8 @@ export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, eventId } = await params;
+    const { projectId: rawProjectIdentifier, eventId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await getEvent(projectId, eventId, auth.user.id);
     return NextResponse.json({ data: result.event } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -33,7 +35,8 @@ export async function PUT(request: Request, { params }: Params) {
     }
     const parsed = updateEventSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid event data');
-    const { projectId, eventId } = await params;
+    const { projectId: rawProjectIdentifier, eventId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await updateEvent(projectId, eventId, parsed.data, auth.user.id);
     return NextResponse.json(
       { data: result.event, message: 'Event updated successfully' } satisfies ApiResponse
@@ -49,7 +52,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, eventId } = await params;
+    const { projectId: rawProjectIdentifier, eventId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await deleteEvent(projectId, eventId, auth.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {

@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { updateMarkerSchema } from '@mantemap/validation';
 import { AuthorizationError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { editMarker, removeMarker } from '@/lib/services/floor-plan-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -36,7 +37,8 @@ export async function PATCH(request: Request, { params }: Params) {
     const parsed = updateMarkerSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid marker data');
 
-    const { projectId, floorPlanId, markerId } = await params;
+    const { projectId: rawProjectIdentifier, floorPlanId, markerId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await editMarker(
       projectId,
       floorPlanId,
@@ -60,7 +62,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, floorPlanId, markerId } = await params;
+    const { projectId: rawProjectIdentifier, floorPlanId, markerId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await removeMarker(projectId, floorPlanId, markerId, auth.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {

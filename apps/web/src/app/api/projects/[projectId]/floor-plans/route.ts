@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound, payloadTooLarge, unsupportedMediaType } from '@/lib/http/api-error';
 import { uploadFloorPlan, listFloorPlans } from '@/lib/services/floor-plan-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -21,7 +22,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const url = new URL(request.url);
     const locationId = url.searchParams.get('locationId');
 
@@ -40,7 +42,8 @@ export async function POST(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
 
     // Parse multipart form data
     let formData: FormData;

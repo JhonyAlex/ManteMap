@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { getFloorPlan, removeFloorPlan } from '@/lib/services/floor-plan-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -20,7 +21,8 @@ export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, floorPlanId } = await params;
+    const { projectId: rawProjectIdentifier, floorPlanId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await getFloorPlan(projectId, floorPlanId, auth.user.id);
     return NextResponse.json({ data: result.floorPlan } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -33,7 +35,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, floorPlanId } = await params;
+    const { projectId: rawProjectIdentifier, floorPlanId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await removeFloorPlan(projectId, floorPlanId, auth.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { logInspection } from '@/lib/services/inspection-service';
 
 /**
@@ -18,7 +19,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const body = await request.json();
 
     const { itemId, statusId, notes, photoPath } = body;

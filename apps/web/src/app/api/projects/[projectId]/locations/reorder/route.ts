@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { reorderLocationsSchema } from '@mantemap/validation';
 import { AuthorizationError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { reorderLocations } from '@/lib/services/location-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -30,7 +31,8 @@ export async function PUT(
     }
     const parsed = reorderLocationsSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid reorder data');
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await reorderLocations(projectId, parsed.data, auth.user.id);
     return NextResponse.json(
       { message: 'Locations reordered successfully' } satisfies ApiResponse

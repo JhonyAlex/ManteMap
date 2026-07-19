@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { acknowledgeAlert, dismissAlert } from '@/lib/services/alert-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -11,7 +12,8 @@ export async function PATCH(request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, alertId } = await params;
+    const { projectId: rawProjectIdentifier, alertId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
 
     let body: unknown;
     try {

@@ -8,12 +8,13 @@ vi.mock('@/lib/services/event-service', () => ({
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
 vi.mock('@/lib/services/project-service', () => ({
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+  resolveProjectId: vi.fn(),
 }));
 
 import { GET, POST } from './route';
 import { createEvent, getEventsInRange } from '@/lib/services/event-service';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { unauthorized } from '@/lib/http/api-error';
 
 const params = { params: Promise.resolve({ projectId: 'project-1' }) };
@@ -50,6 +51,9 @@ function createRequest(body?: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getAuthUser).mockResolvedValue({ user } as never);
+  vi.mocked(resolveProjectId).mockImplementation((identifier: string) =>
+    Promise.resolve(identifier === 'PIGMEA-ED1' ? 'project-1' : identifier)
+  );
 });
 
 describe('events collection routes', () => {
@@ -104,6 +108,23 @@ describe('events collection routes', () => {
         expect.any(Date),
         'user-1',
         'document_expiration'
+      );
+    });
+
+    it('resolves a project code before querying another domain', async () => {
+      vi.mocked(getEventsInRange).mockResolvedValue({ events: [] } as never);
+      await GET(
+        listRequest({ start: '2026-03-01T00:00:00.000Z', end: '2026-03-31T23:59:59.000Z' }),
+        { params: Promise.resolve({ projectId: 'PIGMEA-ED1' }) }
+      );
+
+      expect(resolveProjectId).toHaveBeenCalledWith('PIGMEA-ED1');
+      expect(getEventsInRange).toHaveBeenCalledWith(
+        'project-1',
+        expect.any(Date),
+        expect.any(Date),
+        'user-1',
+        undefined
       );
     });
 

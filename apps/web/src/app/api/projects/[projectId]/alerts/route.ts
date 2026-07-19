@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { listAlerts, getUnreadCount } from '@/lib/services/alert-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -12,7 +13,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const url = new URL(request.url);
 
     // Special action: unread count

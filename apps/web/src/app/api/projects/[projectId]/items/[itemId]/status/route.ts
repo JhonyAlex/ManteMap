@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { transitionStatusSchema } from '@mantemap/validation';
 import { AuthorizationError, ConflictError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, conflict, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { transitionStatus } from '@/lib/services/item-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -33,7 +34,8 @@ export async function PATCH(request: Request, { params }: Params) {
       return badRequest(parsed.error.errors[0]?.message ?? 'Invalid status data');
     }
 
-    const { projectId, itemId } = await params;
+    const { projectId: rawProjectIdentifier, itemId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await transitionStatus(
       projectId,
       itemId,

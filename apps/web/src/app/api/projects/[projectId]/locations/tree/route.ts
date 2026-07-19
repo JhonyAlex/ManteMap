@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { internalError, notFound } from '@/lib/http/api-error';
 import { getTree } from '@/lib/services/location-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -21,7 +22,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await getTree(projectId, auth.user.id);
     return NextResponse.json({ data: result.tree } satisfies ApiResponse);
   } catch (error: unknown) {

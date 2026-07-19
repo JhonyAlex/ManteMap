@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createItemSchema } from '@mantemap/validation';
 import { AuthorizationError, ConflictError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, conflict, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { createItem, listItems } from '@/lib/services/item-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -13,7 +14,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const url = new URL(request.url);
     const itemTypeId = url.searchParams.get('itemTypeId');
     const statusId = url.searchParams.get('statusId') ?? undefined;
@@ -53,7 +55,8 @@ export async function POST(
     }
     const parsed = createItemSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid item data');
-    const { projectId } = await params;
+    const { projectId: rawProjectIdentifier } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await createItem(projectId, parsed.data, auth.user.id);
     return NextResponse.json(
       { data: result.item, message: 'Item created successfully' } satisfies ApiResponse,

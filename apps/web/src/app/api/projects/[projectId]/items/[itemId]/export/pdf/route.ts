@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { requireProjectMember } from '@/lib/services/project-access-service';
 import { findItemByProjectAndId } from '@/lib/repositories/item-repository';
 import { findDocumentsByItem } from '@/lib/repositories/document-repository';
@@ -53,7 +54,8 @@ export async function GET(
     return auth.error;
   }
 
-  const { projectId, itemId } = await params;
+  const { projectId: rawProjectIdentifier, itemId } = await params;
+  const projectId = await resolveProjectId(rawProjectIdentifier);
 
   // Project membership check (PDF-005)
   try {

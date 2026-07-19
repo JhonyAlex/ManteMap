@@ -14,8 +14,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks — use vi.hoisted to avoid hoisting issues
 // ---------------------------------------------------------------------------
 
-const { mockGetAuthUser } = vi.hoisted(() => ({
+const { mockGetAuthUser, mockResolveProjectId } = vi.hoisted(() => ({
   mockGetAuthUser: vi.fn(),
+  mockResolveProjectId: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/session', () => ({
@@ -44,7 +45,7 @@ vi.mock('@/lib/http/api-error', () => ({
 }));
 
 vi.mock('@/lib/services/project-service', () => ({
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+  resolveProjectId: mockResolveProjectId,
 }));
 
 import { GET, POST } from './route';
@@ -54,7 +55,14 @@ import { GET, POST } from './route';
 // ---------------------------------------------------------------------------
 
 const PROJECT_ID = 'clprojxxxxxxxxxxxxxxxxxx';
+const PROJECT_CODE = 'PIGMEA-ED1';
 const USER_ID = 'cluserxxxxxxxxxxxxxxxxxx';
+
+beforeEach(() => {
+  mockResolveProjectId.mockImplementation((identifier: string) =>
+    Promise.resolve(identifier === PROJECT_CODE ? PROJECT_ID : identifier)
+  );
+});
 
 function createRequest(url = `http://localhost/api/projects/${PROJECT_ID}/locations`): Request {
   return new Request(url);
@@ -109,6 +117,19 @@ describe('GET /api/projects/[projectId]/locations', () => {
     const response = await GET(createRequest(), { params: Promise.resolve({ projectId: PROJECT_ID }) });
 
     expect(response.status).toBe(500);
+  });
+
+  it('resolves a project code before listing locations', async () => {
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockListLocations.mockResolvedValue({ locations: [] });
+
+    const response = await GET(createRequest(`http://localhost/api/projects/${PROJECT_CODE}/locations`), {
+      params: Promise.resolve({ projectId: PROJECT_CODE }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockResolveProjectId).toHaveBeenCalledWith(PROJECT_CODE);
+    expect(mockListLocations).toHaveBeenCalledWith(PROJECT_ID, USER_ID);
   });
 });
 
@@ -165,5 +186,28 @@ describe('POST /api/projects/[projectId]/locations', () => {
     const response = await POST(request, { params: Promise.resolve({ projectId: PROJECT_ID }) });
 
     expect(response.status).toBe(401);
+  });
+
+  it('resolves a project code before creating a location', async () => {
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockCreateLocation.mockResolvedValue({
+      location: { id: 'loc-new', name: 'New Center', level: 0 },
+    });
+
+    const response = await POST(
+      createPostRequest(
+        { name: 'New Center', level: 0 },
+        `http://localhost/api/projects/${PROJECT_CODE}/locations`
+      ),
+      { params: Promise.resolve({ projectId: PROJECT_CODE }) }
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockResolveProjectId).toHaveBeenCalledWith(PROJECT_CODE);
+    expect(mockCreateLocation).toHaveBeenCalledWith(
+      PROJECT_ID,
+      { name: 'New Center', level: 0 },
+      USER_ID
+    );
   });
 });

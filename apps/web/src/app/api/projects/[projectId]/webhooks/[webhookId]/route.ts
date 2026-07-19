@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { forbidden, internalError, notFound, badRequest } from '@/lib/http/api-error';
 import { requireProjectMember } from '@/lib/services/project-access-service';
 import { findById, updateWebhook, deleteWebhook } from '@/lib/repositories/webhook-repository';
@@ -42,7 +43,8 @@ export async function GET(
   if ('error' in auth) return auth.error;
 
   try {
-    const { projectId, webhookId } = await params;
+    const { projectId: rawProjectIdentifier, webhookId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await requireProjectMember(projectId, auth.user.id);
 
     const endpoint = await findById(webhookId);
@@ -67,7 +69,8 @@ export async function PATCH(
   if ('error' in auth) return auth.error;
 
   try {
-    const { projectId, webhookId } = await params;
+    const { projectId: rawProjectIdentifier, webhookId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await requireProjectMember(projectId, auth.user.id);
 
     const existing = await findById(webhookId);
@@ -120,7 +123,8 @@ export async function DELETE(
   if ('error' in auth) return auth.error;
 
   try {
-    const { projectId, webhookId } = await params;
+    const { projectId: rawProjectIdentifier, webhookId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await requireProjectMember(projectId, auth.user.id);
 
     const existing = await findById(webhookId);

@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { requireProjectMember } from '@/lib/services/project-access-service';
 import { findItemByProjectAndId } from '@/lib/repositories/item-repository';
 import { findProjectById } from '@/lib/repositories/project-repository';
@@ -29,7 +30,8 @@ export async function POST(
     return auth.error;
   }
 
-  const { projectId } = await params;
+  const { projectId: rawProjectIdentifier } = await params;
+  const projectId = await resolveProjectId(rawProjectIdentifier);
 
   // 2. Authorization — must be project member
   await requireProjectMember(projectId, auth.user.id);

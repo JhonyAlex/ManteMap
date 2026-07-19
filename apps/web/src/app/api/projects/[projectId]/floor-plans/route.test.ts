@@ -14,8 +14,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks — use vi.hoisted to avoid hoisting issues
 // ---------------------------------------------------------------------------
 
-const { mockGetAuthUser } = vi.hoisted(() => ({
+const { mockGetAuthUser, mockResolveProjectId } = vi.hoisted(() => ({
   mockGetAuthUser: vi.fn(),
+  mockResolveProjectId: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/session', () => ({
@@ -60,7 +61,7 @@ vi.mock('@/lib/http/api-error', () => ({
 }));
 
 vi.mock('@/lib/services/project-service', () => ({
-  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+  resolveProjectId: mockResolveProjectId,
 }));
 
 import { GET, POST } from './route';
@@ -73,10 +74,17 @@ import { PATCH as PATCH_MARKER, DELETE as DELETE_MARKER } from './[floorPlanId]/
 // ---------------------------------------------------------------------------
 
 const PROJECT_ID = 'clprojxxxxxxxxxxxxxxxxxx';
+const PROJECT_CODE = 'PIGMEA-ED1';
 const LOCATION_ID = 'clloc1xxxxxxxxxxxxxxxxxx';
 const FLOOR_PLAN_ID = 'clfp1xxxxxxxxxxxxxxxxxxx';
 const MARKER_ID = 'clmk1xxxxxxxxxxxxxxxxxxx';
 const USER_ID = 'cluserxxxxxxxxxxxxxxxxxx';
+
+beforeEach(() => {
+  mockResolveProjectId.mockImplementation((identifier: string) =>
+    Promise.resolve(identifier === PROJECT_CODE ? PROJECT_ID : identifier)
+  );
+});
 
 function makeParams(overrides: Record<string, string> = {}) {
   return {
@@ -127,6 +135,34 @@ describe('GET /api/projects/[projectId]/floor-plans', () => {
     expect(response.status).toBe(200);
     expect(mockListFloorPlans).toHaveBeenCalledWith(PROJECT_ID, null, USER_ID);
   });
+
+  it('resolves a project code before listing floor plans', async () => {
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockListFloorPlans.mockResolvedValue({ floorPlans: [] });
+
+    const response = await GET(
+      new Request(`http://localhost/api/projects/${PROJECT_CODE}/floor-plans`),
+      { params: Promise.resolve(makeParams({ projectId: PROJECT_CODE })) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockResolveProjectId).toHaveBeenCalledWith(PROJECT_CODE);
+    expect(mockListFloorPlans).toHaveBeenCalledWith(PROJECT_ID, null, USER_ID);
+  });
+
+  it('returns 404 when the project identifier cannot be resolved', async () => {
+    const { NotFoundError } = await import('@mantemap/shared');
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockResolveProjectId.mockRejectedValueOnce(new NotFoundError('Project', PROJECT_CODE));
+
+    const response = await GET(
+      new Request(`http://localhost/api/projects/${PROJECT_CODE}/floor-plans`),
+      { params: Promise.resolve(makeParams({ projectId: PROJECT_CODE })) }
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockListFloorPlans).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -160,6 +196,35 @@ describe('POST /api/projects/[projectId]/floor-plans', () => {
     const response = await POST(req, { params: Promise.resolve(makeParams({ locationId: '' })) });
 
     expect(response.status).toBe(400);
+  });
+
+  it('resolves a project code before uploading a floor plan', async () => {
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockUploadFloorPlan.mockResolvedValue({ floorPlan: { id: FLOOR_PLAN_ID } });
+    const formData = new FormData();
+    formData.append('locationId', LOCATION_ID);
+    formData.append('name', 'Production plan');
+    formData.append('width', '1920');
+    formData.append('height', '1080');
+    formData.append('file', new File(['image'], 'plan.png', { type: 'image/png' }));
+
+    const response = await POST(
+      new Request(`http://localhost/api/projects/${PROJECT_CODE}/floor-plans`, {
+        method: 'POST',
+        body: formData,
+      }),
+      { params: Promise.resolve(makeParams({ projectId: PROJECT_CODE })) }
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockResolveProjectId).toHaveBeenCalledWith(PROJECT_CODE);
+    expect(mockUploadFloorPlan).toHaveBeenCalledWith(
+      PROJECT_ID,
+      LOCATION_ID,
+      expect.any(File),
+      { name: 'Production plan', width: 1920, height: 1080 },
+      USER_ID
+    );
   });
 });
 
@@ -248,6 +313,20 @@ describe('GET /api/projects/[projectId]/floor-plans/[floorPlanId]/markers', () =
 
     expect(response.status).toBe(200);
     expect(body.data).toHaveLength(1);
+  });
+
+  it('resolves a project code before listing nested markers', async () => {
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockListMarkers.mockResolvedValue({ markers: [] });
+
+    const response = await GET_MARKERS(
+      new Request(`http://localhost/api/projects/${PROJECT_CODE}/floor-plans/${FLOOR_PLAN_ID}/markers`),
+      { params: Promise.resolve(makeParams({ projectId: PROJECT_CODE })) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockResolveProjectId).toHaveBeenCalledWith(PROJECT_CODE);
+    expect(mockListMarkers).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID, USER_ID);
   });
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createFloorPlanSchema, type CreateFloorPlanInput } from '@mantemap/validation';
@@ -84,6 +84,9 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
   const [floorPlans, setFloorPlans] = useState<FloorPlanItem[]>([]);
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [floorPlansLoadError, setFloorPlansLoadError] = useState(false);
+  const [locationsLoadError, setLocationsLoadError] = useState(false);
+  const loadErrorToastShown = useRef(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
@@ -104,31 +107,47 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
   // Data fetching
   // ---------------------------------------------------------------------------
 
+  const reportLoadError = useCallback((message: string) => {
+    if (!loadErrorToastShown.current) {
+      loadErrorToastShown.current = true;
+      toast.error(message);
+    }
+  }, []);
+
   const fetchFloorPlans = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/floor-plans`);
-      if (res.ok) {
-        const body = await res.json();
-        setFloorPlans(body.data ?? []);
-      }
+      if (!res.ok) throw new Error(`Floor plans request failed with ${res.status}`);
+      const body = await res.json();
+      setFloorPlans(body.data ?? []);
     } catch {
-      // silent
+      setFloorPlansLoadError(true);
+      reportLoadError('Floor plans could not be loaded. Your uploaded data may still be available.');
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, reportLoadError]);
 
   const fetchLocations = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/locations`);
-      if (res.ok) {
-        const body = await res.json();
-        setLocations(body.data ?? []);
-      }
+      if (!res.ok) throw new Error(`Locations request failed with ${res.status}`);
+      const body = await res.json();
+      setLocations(body.data ?? []);
     } catch {
-      // silent
+      setLocationsLoadError(true);
+      reportLoadError('Locations could not be loaded. Existing floor plans are still available.');
     }
-  }, [projectId]);
+  }, [projectId, reportLoadError]);
+
+  const retryDataLoad = useCallback(() => {
+    setIsLoading(true);
+    setFloorPlansLoadError(false);
+    setLocationsLoadError(false);
+    loadErrorToastShown.current = false;
+    void fetchFloorPlans();
+    void fetchLocations();
+  }, [fetchFloorPlans, fetchLocations]);
 
   useEffect(() => {
     fetchFloorPlans();
@@ -328,6 +347,11 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
   }
 
   function handleSubmit(e: React.FormEvent) {
+    if (locationsLoadError) {
+      e.preventDefault();
+      setErrors({ general: 'Locations must be available before uploading a floor plan.' });
+      return;
+    }
     if (uploadMode === 'file') {
       handleFileUpload(e);
     } else {
@@ -349,7 +373,10 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
             Upload and manage interactive floor plans with markers and polygons.
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+        <Button
+          disabled={locationsLoadError}
+          onClick={() => { resetForm(); setDialogOpen(true); }}
+        >
           <Plus className="mr-1 h-4 w-4" />
           Upload Plan
         </Button>
@@ -491,7 +518,7 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isCreating}>
+              <Button type="submit" disabled={isCreating || locationsLoadError}>
                 {isCreating ? 'Uploading...' : 'Upload Plan'}
               </Button>
             </DialogFooter>
@@ -518,9 +545,24 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
       </Dialog>
 
       {/* Floor plans list */}
+      {locationsLoadError && !floorPlansLoadError && (
+        <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p>Locations could not be loaded. Existing floor plans remain available, but uploads are temporarily disabled.</p>
+          <Button variant="outline" className="mt-3" onClick={retryDataLoad}>Try Again</Button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2].map(i => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
+        </div>
+      ) : floorPlansLoadError ? (
+        <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+          <h3 className="mb-1 text-lg font-semibold">Floor plans could not be loaded</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            We could not confirm the current floor plans. Your uploaded data may still be available.
+          </p>
+          <Button variant="outline" onClick={retryDataLoad}>Try Again</Button>
         </div>
       ) : floorPlans.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
@@ -531,7 +573,10 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
           <p className="mb-4 max-w-sm text-sm text-muted-foreground">
             Upload your first floor plan to start placing markers.
           </p>
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+          <Button
+            disabled={locationsLoadError}
+            onClick={() => { resetForm(); setDialogOpen(true); }}
+          >
             <Plus className="mr-1 h-4 w-4" />
             Upload First Plan
           </Button>

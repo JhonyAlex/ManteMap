@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { updateItemSchema } from '@mantemap/validation';
 import { AuthorizationError, ConflictError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, conflict, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { getItem, updateItem, deleteItem } from '@/lib/services/item-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -12,7 +13,8 @@ export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, itemId } = await params;
+    const { projectId: rawProjectIdentifier, itemId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await getItem(projectId, itemId, auth.user.id);
     return NextResponse.json({ data: result.item } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -33,7 +35,8 @@ export async function PATCH(request: Request, { params }: Params) {
     }
     const parsed = updateItemSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid item data');
-    const { projectId, itemId } = await params;
+    const { projectId: rawProjectIdentifier, itemId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await updateItem(projectId, itemId, parsed.data, auth.user.id);
     return NextResponse.json(
       { data: result.item, message: 'Item updated successfully' } satisfies ApiResponse
@@ -50,7 +53,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, itemId } = await params;
+    const { projectId: rawProjectIdentifier, itemId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     await deleteItem(projectId, itemId, auth.user.id);
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {

@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { createMarkerSchema } from '@mantemap/validation';
 import { AuthorizationError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { addMarker, listMarkers } from '@/lib/services/floor-plan-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -21,7 +22,8 @@ export async function GET(_request: Request, { params }: Params) {
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, floorPlanId } = await params;
+    const { projectId: rawProjectIdentifier, floorPlanId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await listMarkers(projectId, floorPlanId, auth.user.id);
     return NextResponse.json({ data: result.markers } satisfies ApiResponse);
   } catch (error: unknown) {
@@ -43,7 +45,8 @@ export async function POST(request: Request, { params }: Params) {
     const parsed = createMarkerSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid marker data');
 
-    const { projectId, floorPlanId } = await params;
+    const { projectId: rawProjectIdentifier, floorPlanId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await addMarker(projectId, floorPlanId, parsed.data, auth.user.id);
 
     return NextResponse.json(

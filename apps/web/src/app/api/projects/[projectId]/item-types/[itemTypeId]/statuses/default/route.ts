@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
+import { resolveProjectId } from '@/lib/services/project-service';
 import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { setDefaultStatus } from '@/lib/services/status-service';
 import type { ApiResponse } from '@mantemap/shared';
@@ -20,7 +21,8 @@ export async function PUT(request: Request, { params }: Params) {
     try { body = await request.json(); } catch { return badRequest('Invalid JSON in request body'); }
     const parsed = setDefaultSchema.safeParse(body);
     if (!parsed.success) return badRequest(parsed.error.errors[0]?.message ?? 'Invalid request data');
-    const { projectId, itemTypeId } = await params;
+    const { projectId: rawProjectIdentifier, itemTypeId } = await params;
+    const projectId = await resolveProjectId(rawProjectIdentifier);
     const result = await setDefaultStatus(projectId, parsed.data.statusId, itemTypeId, auth.user.id);
     return NextResponse.json({ data: result, message: 'Default status updated successfully' } satisfies ApiResponse);
   } catch (error: unknown) {
