@@ -34,6 +34,10 @@ vi.mock('@/lib/http/api-error', () => ({
   notFound: (msg: string) => new Response(JSON.stringify({ error: 'NOT_FOUND', message: msg }), { status: 404 }),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET } from './route';
 
 // ---------------------------------------------------------------------------

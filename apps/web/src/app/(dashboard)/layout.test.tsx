@@ -153,4 +153,5 @@ describe('DashboardLayout', () => {
 
     expect(document.getElementById('dashboard-background')).toBeInTheDocument();
   });
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });

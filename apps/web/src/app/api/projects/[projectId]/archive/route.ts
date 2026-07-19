@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { archiveProject } from '@/lib/services/project-service';
+import { archiveProject, resolveProjectId } from '@/lib/services/project-service';
 import { getAuthUser } from '@/lib/auth/session';
 import { notFound, forbidden, internalError } from '@/lib/http/api-error';
 import { NotFoundError, AuthorizationError } from '@mantemap/shared';

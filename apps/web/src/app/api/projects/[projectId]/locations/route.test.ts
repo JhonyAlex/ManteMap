@@ -43,6 +43,10 @@ vi.mock('@/lib/http/api-error', () => ({
   internalError: () => new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Internal server error' }), { status: 500 }),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET, POST } from './route';
 
 // ---------------------------------------------------------------------------

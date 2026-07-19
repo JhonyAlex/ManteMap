@@ -90,8 +90,8 @@ describe('Sidebar', () => {
       expect(screen.getByText(/no projects/i)).toBeInTheDocument();
     });
 
-    it('highlights the current project based on pathname', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1');
+    it('highlights the current project based on pathname using project code', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA');
       render(<Sidebar projects={projects} />);
 
       const alphaLink = screen.getByRole('link', { name: /alpha project/i });
@@ -99,29 +99,29 @@ describe('Sidebar', () => {
     });
 
     it('does not highlight non-current projects', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1');
+      mockUsePathname.mockReturnValue('/projects/ALPHA');
       render(<Sidebar projects={projects} />);
 
       const betaLink = screen.getByRole('link', { name: /beta project/i });
       expect(betaLink).not.toHaveAttribute('aria-current', 'page');
     });
 
-    it('shows Calendar nav link when a project is active', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1');
+    it('shows Calendar nav link when a project is active via code', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA');
       render(<Sidebar projects={projects} />);
 
       expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument();
     });
 
-    it('shows Items nav link when a project is active', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1');
+    it('shows Items nav link when a project is active via code', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA');
       render(<Sidebar projects={projects} />);
 
       expect(screen.getByRole('link', { name: /^items$/i })).toBeInTheDocument();
     });
 
-    it('highlights Calendar link when on calendar page', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1/calendar');
+    it('highlights Calendar link when on code-based calendar page', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA/calendar');
       render(<Sidebar projects={projects} />);
 
       const calendarLink = screen.getByRole('link', { name: /calendar/i });
@@ -136,19 +136,19 @@ describe('Sidebar', () => {
       expect(screen.queryByRole('link', { name: /calendar/i })).not.toBeInTheDocument();
     });
 
-    it('shows Dashboard nav link when a project is active', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1');
+    it('shows Dashboard nav link when a project is active via code', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA');
       render(<Sidebar projects={projects} />);
 
       expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
     });
 
-    it('Dashboard link points to the project dashboard route', () => {
-      mockUsePathname.mockReturnValue('/projects/proj-1');
+    it('Dashboard link points to the code-based project dashboard route', () => {
+      mockUsePathname.mockReturnValue('/projects/ALPHA');
       render(<Sidebar projects={projects} />);
 
       const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
-      expect(dashboardLink).toHaveAttribute('href', '/projects/proj-1/dashboard');
+      expect(dashboardLink).toHaveAttribute('href', '/projects/ALPHA/dashboard');
     });
 
     it('does not show Dashboard link when no project is active', () => {

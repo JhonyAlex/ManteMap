@@ -6,6 +6,10 @@ vi.mock('@/lib/services/floor-plan-service', () => ({
 }));
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET } from './route';
 import { getFloorPlanImage } from '@/lib/services/floor-plan-service';
 import { getAuthUser } from '@/lib/auth/session';

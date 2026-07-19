@@ -7,6 +7,10 @@ vi.mock('@/lib/services/alert-service', () => ({
 }));
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET } from './route';
 import { listAlerts, getUnreadCount } from '@/lib/services/alert-service';
 import { getAuthUser } from '@/lib/auth/session';

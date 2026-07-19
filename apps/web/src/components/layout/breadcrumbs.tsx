@@ -5,9 +5,10 @@
  *
  * Renders breadcrumb navigation from the current pathname.
  * Uses semantic nav landmark with ordered list.
- * Accepts an optional projectNames map to resolve project IDs to names.
+ * Accepts optional projectNames and entityMaps to resolve entity IDs to names.
  *
  * Spec: specs/application-shell/spec.md — "Responsive and accessible navigation"
+ * Spec: specs/application-shell/spec.md — "Breadcrumb name resolution"
  */
 
 import React from 'react';
@@ -19,14 +20,31 @@ interface BreadcrumbItem {
   href: string;
 }
 
+/** Maps of entity ID → display name for breadcrumb resolution. */
+export interface EntityMaps {
+  floorPlans?: Record<string, string>;
+  items?: Record<string, string>;
+  itemTypes?: Record<string, string>;
+  locations?: Record<string, string>;
+  events?: Record<string, string>;
+}
+
 interface BreadcrumbsProps {
   /** Map of project ID → project name for resolving breadcrumb labels */
   projectNames?: Record<string, string>;
+  /** Maps of entity ID → display name for resolving other entity segments */
+  entityMaps?: EntityMaps;
+  /** When true, hides breadcrumbs on project routes (dashboard layout delegates to project layout) */
+  hideOnProjectRoutes?: boolean;
 }
 
-function pathToBreadcrumbs(
+/** Route segments that should not appear as breadcrumb entries. */
+const SKIP_SEGMENTS = new Set(['dashboard', 'projects']);
+
+export function pathToBreadcrumbs(
   pathname: string,
-  projectNames?: Record<string, string>
+  projectNames?: Record<string, string>,
+  entityMaps?: EntityMaps
 ): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean);
   const items: BreadcrumbItem[] = [{ label: 'Dashboard', href: '/dashboard' }];
@@ -39,14 +57,30 @@ function pathToBreadcrumbs(
   for (const segment of segments) {
     currentPath += `/${segment}`;
 
-    // Skip the root dashboard entry (already added)
-    if (segment === 'dashboard') continue;
+    // Skip route-group segments (dashboard, projects)
+    if (SKIP_SEGMENTS.has(segment)) continue;
 
-    // If this segment matches a known project ID, use its name
-    const projectName = projectNames?.[segment];
-    const label = projectName
-      ? projectName
-      : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+    // Resolve segment against all available maps — first match wins
+    let label: string | undefined;
+
+    // 1. Check projectNames first
+    label = projectNames?.[segment];
+
+    // 2. Check entity maps
+    if (!label && entityMaps) {
+      label =
+        entityMaps.floorPlans?.[segment] ??
+        entityMaps.items?.[segment] ??
+        entityMaps.itemTypes?.[segment] ??
+        entityMaps.locations?.[segment] ??
+        entityMaps.events?.[segment];
+    }
+
+    // 3. Fall back to formatted raw segment
+    if (!label) {
+      label =
+        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+    }
 
     items.push({ label, href: currentPath });
   }
@@ -54,9 +88,23 @@ function pathToBreadcrumbs(
   return items;
 }
 
-export function Breadcrumbs({ projectNames }: BreadcrumbsProps) {
+export function Breadcrumbs({
+  projectNames,
+  entityMaps,
+  hideOnProjectRoutes,
+}: BreadcrumbsProps) {
   const pathname = usePathname();
-  const items = pathToBreadcrumbs(pathname, projectNames);
+
+  // When hideOnProjectRoutes is set, suppress breadcrumbs on project routes
+  // so the project layout can render its own with full entityMaps.
+  if (
+    hideOnProjectRoutes &&
+    /^\/dashboard\/projects\/[^/]+/.test(pathname)
+  ) {
+    return null;
+  }
+
+  const items = pathToBreadcrumbs(pathname, projectNames, entityMaps);
 
   return (
     <nav aria-label="Breadcrumb" className="py-3">

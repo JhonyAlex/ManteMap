@@ -65,7 +65,7 @@ export default async function DashboardLayout({
       {/* Main content area */}
       <div id="dashboard-background" className="flex flex-1 flex-col overflow-y-auto">
         <header className="border-b border-border px-6">
-          <Breadcrumbs projectNames={projectNames} />
+          <Breadcrumbs projectNames={projectNames} hideOnProjectRoutes />
         </header>
 
         <main id="content" tabIndex={-1} className="flex-1 px-6 py-8">

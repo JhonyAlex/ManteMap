@@ -11,6 +11,10 @@ vi.mock('@/lib/services/metrics-service', () => ({
 
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET } from './route';
 import { exportProjectCsv, getProjectMetrics } from '@/lib/services/metrics-service';
 import { getAuthUser } from '@/lib/auth/session';

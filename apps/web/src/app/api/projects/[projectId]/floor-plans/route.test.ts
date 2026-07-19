@@ -59,6 +59,10 @@ vi.mock('@/lib/http/api-error', () => ({
   unsupportedMediaType: (msg: string) => new Response(JSON.stringify({ error: 'UNSUPPORTED_MEDIA_TYPE', message: msg }), { status: 415 }),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET, POST } from './route';
 import { GET as GET_ONE, DELETE } from './[floorPlanId]/route';
 import { GET as GET_MARKERS, POST as POST_MARKER } from './[floorPlanId]/markers/route';

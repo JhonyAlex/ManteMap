@@ -46,6 +46,10 @@ import { requireProjectMember } from '@/lib/services/project-access-service';
 import { findItemByProjectAndId } from '@/lib/repositories/item-repository';
 import { findProjectById } from '@/lib/repositories/project-repository';
 import { unauthorized } from '@/lib/http/api-error';
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET } from '../route';
 
 // ---------------------------------------------------------------------------

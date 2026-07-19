@@ -32,6 +32,10 @@ vi.mock('@/lib/repositories/webhook-repository', () => ({
   deleteWebhook: (...args: unknown[]) => mockDeleteWebhook(...args),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET, PATCH, DELETE } from '../route';
 
 // ---------------------------------------------------------------------------

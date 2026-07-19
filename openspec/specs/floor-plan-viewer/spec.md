@@ -119,3 +119,20 @@ Canvas MUST resize to fill its parent container. On window resize, the canvas SH
 - GIVEN a floor plan viewer at 800×600
 - WHEN the window resizes to 1200×900
 - THEN the canvas resizes and markers remain at correct relative positions
+
+### Requirement: Image source from API endpoint
+
+FloorPlanViewer's `imageUrl` prop SHALL be an API endpoint URL (`/api/projects/{projectId}/floor-plans/{floorPlanId}/image`) served by the floor plan image endpoint. The browser SHALL load the image via authenticated HTTP request. (Previously the prop held a StorageDriver path that was not publicly accessible.)
+
+#### Scenario: Image loads via API
+
+- GIVEN a FloorPlanViewer receiving an API endpoint URL as `imageUrl`
+- WHEN the Konva canvas initializes the background `Image` object
+- THEN the image loads successfully from the authenticated API endpoint
+- AND the browser sends session cookies with the request
+
+#### Scenario: Missing or invalid image
+
+- GIVEN a FloorPlanViewer with an `imageUrl` pointing to a non-existent floor plan
+- WHEN the image fails to load
+- THEN the canvas shows an error placeholder (no crash)

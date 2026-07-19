@@ -22,6 +22,10 @@ vi.mock('@/lib/services/inspection-service', () => ({
 }));
 
 // RED — route handler does not exist yet
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { POST } from '../route';
 
 // ---------------------------------------------------------------------------

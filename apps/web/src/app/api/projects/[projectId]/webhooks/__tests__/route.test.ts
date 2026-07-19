@@ -31,6 +31,10 @@ vi.mock('@/lib/repositories/webhook-repository', () => ({
   createWebhook: (...args: unknown[]) => mockCreateWebhook(...args),
 }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET, POST } from '../route';
 
 // ---------------------------------------------------------------------------

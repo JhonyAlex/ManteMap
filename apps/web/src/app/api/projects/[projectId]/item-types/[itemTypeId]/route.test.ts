@@ -8,6 +8,10 @@ vi.mock('@/lib/services/item-type-service', () => ({
 }));
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { DELETE, GET, PATCH } from './route';
 import { archiveItemType, getItemType, updateItemType } from '@/lib/services/item-type-service';
 import { getAuthUser } from '@/lib/auth/session';

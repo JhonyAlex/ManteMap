@@ -128,4 +128,5 @@ describe('DashboardPage', () => {
 
     expect(mockGetDashboardProjects).toHaveBeenCalledWith('user-1');
   });
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });

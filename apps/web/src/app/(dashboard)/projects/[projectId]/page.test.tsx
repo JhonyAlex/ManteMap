@@ -1,138 +1,84 @@
-// @vitest-environment jsdom
 /**
- * RED tests for Project page.
+ * Unit tests for project CUID redirect route.
  *
- * Verifies:
- *   - Renders project details for accessible projects
- *   - Shows not-found for inaccessible projects (non-member)
- *   - Shows not-found for non-existent projects
- *   - No project data is leaked to non-members
+ * Tests that:
+ *   1. CUID → code redirect via permanentRedirect
+ *   2. Invalid CUID returns notFound
  *
- * Spec: specs/application-shell/spec.md — "Inaccessible context"
- * Design: design.md — "Non-members receive 404 to avoid disclosing project existence"
+ * Vitest + React Testing Library.
  */
 
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { render, screen } from '@testing-library/react';
+
+// Mock repository
+vi.mock('@/lib/repositories/project-repository', () => ({
+  findProjectById: vi.fn(),
+}));
 
 // Mock next/navigation
+const mockPermanentRedirect = vi.fn();
+const mockNotFound = vi.fn();
+
 vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(),
-  usePathname: vi.fn(),
-  notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }),
+  permanentRedirect: mockPermanentRedirect,
+  notFound: mockNotFound,
 }));
 
-// Mock auth/session
-vi.mock('@/lib/auth/session', () => ({
-  getCurrentUser: vi.fn(),
-}));
+import { findProjectById } from '@/lib/repositories/project-repository';
+const mockFindProjectById = findProjectById as Mock;
 
-// Mock project service
-vi.mock('@/lib/services/project-service', () => ({
-  getProjectById: vi.fn(),
-}));
+// Dynamic import after mocks
+let ProjectRedirectPage: any;
 
-// Mock next-auth/react
-vi.mock('next-auth/react', () => ({
-  useSession: vi.fn(),
-}));
+beforeAll(async () => {
+  const mod = await import('./page');
+  ProjectRedirectPage = mod.default;
+});
 
-import ProjectPage from './page';
-import { getCurrentUser } from '@/lib/auth/session';
-import { getProjectById } from '@/lib/services/project-service';
-import { useSession } from 'next-auth/react';
-
-const mockGetCurrentUser = getCurrentUser as Mock;
-const mockGetProjectById = getProjectById as Mock;
-const mockUseSession = useSession as Mock;
-
-const mockUser = {
-  id: 'user-1',
-  email: 'test@example.com',
-  name: 'Test User',
-  role: 'TECHNICIAN',
-};
-
-const mockProject = {
-  id: 'proj-1',
-  code: 'ALPHA',
-  name: 'Alpha Project',
-  description: 'Test project description',
-  status: 'ACTIVE',
-  ownerId: 'user-1',
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
-
-describe('ProjectPage', () => {
+describe('Project CUID redirect route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetCurrentUser.mockResolvedValue(mockUser);
-    mockUseSession.mockReturnValue({
-      data: { user: mockUser },
-      status: 'authenticated',
+  });
+
+  it('redirects CUID to project code when project exists', async () => {
+    mockFindProjectById.mockResolvedValue({
+      id: 'clxabc123',
+      code: 'MAP-001',
+      name: 'Test Project',
     });
+
+    await ProjectRedirectPage({
+      params: Promise.resolve({ projectId: 'clxabc123' }),
+    });
+
+    expect(mockFindProjectById).toHaveBeenCalledWith('clxabc123');
+    expect(mockPermanentRedirect).toHaveBeenCalledWith('/projects/MAP-001');
+    expect(mockNotFound).not.toHaveBeenCalled();
   });
 
-  it('renders project name for accessible projects', async () => {
-    mockGetProjectById.mockResolvedValue({ project: mockProject });
+  it('returns notFound when project does not exist', async () => {
+    mockFindProjectById.mockResolvedValue(null);
 
-    const ui = await ProjectPage({ params: Promise.resolve({ projectId: 'proj-1' }) });
-    render(ui);
+    await ProjectRedirectPage({
+      params: Promise.resolve({ projectId: 'nonexistent' }),
+    });
 
-    expect(screen.getByText('Alpha Project')).toBeInTheDocument();
+    expect(mockFindProjectById).toHaveBeenCalledWith('nonexistent');
+    expect(mockPermanentRedirect).not.toHaveBeenCalled();
+    expect(mockNotFound).toHaveBeenCalled();
   });
 
-  it('renders project code for accessible projects', async () => {
-    mockGetProjectById.mockResolvedValue({ project: mockProject });
+  it('redirects different CUID to its corresponding code', async () => {
+    mockFindProjectById.mockResolvedValue({
+      id: 'clxdef456',
+      code: 'FAC-2024',
+      name: 'Facility 2024',
+    });
 
-    const ui = await ProjectPage({ params: Promise.resolve({ projectId: 'proj-1' }) });
-    render(ui);
+    await ProjectRedirectPage({
+      params: Promise.resolve({ projectId: 'clxdef456' }),
+    });
 
-    // Code appears in both the header badge and the details section
-    const codeElements = screen.getAllByText('ALPHA');
-    expect(codeElements.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('calls getProjectById with correct project and user IDs', async () => {
-    mockGetProjectById.mockResolvedValue({ project: mockProject });
-
-    await ProjectPage({ params: Promise.resolve({ projectId: 'proj-1' }) });
-
-    expect(mockGetProjectById).toHaveBeenCalledWith('proj-1', 'user-1');
-  });
-
-  it('shows not-found for inaccessible projects (non-member)', async () => {
-    // getProjectById throws NotFoundError for non-members (hides project existence)
-    const { NotFoundError } = await import('@mantemap/shared');
-    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'proj-999'));
-
-    await expect(
-      ProjectPage({ params: Promise.resolve({ projectId: 'proj-999' }) })
-    ).rejects.toThrow('NEXT_NOT_FOUND');
-  });
-
-  it('shows not-found for non-existent projects', async () => {
-    const { NotFoundError } = await import('@mantemap/shared');
-    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'nonexistent'));
-
-    await expect(
-      ProjectPage({ params: Promise.resolve({ projectId: 'nonexistent' }) })
-    ).rejects.toThrow('NEXT_NOT_FOUND');
-  });
-
-  it('does not leak project data to non-members', async () => {
-    const { NotFoundError } = await import('@mantemap/shared');
-    mockGetProjectById.mockRejectedValue(new NotFoundError('Project', 'proj-999'));
-
-    try {
-      await ProjectPage({ params: Promise.resolve({ projectId: 'proj-999' }) });
-    } catch {
-      // Expected — not-found is thrown
-    }
-
-    // The page should NOT render any project content
-    expect(screen.queryByText('Alpha Project')).not.toBeInTheDocument();
-    expect(screen.queryByText('ALPHA')).not.toBeInTheDocument();
+    expect(mockPermanentRedirect).toHaveBeenCalledWith('/projects/FAC-2024');
   });
 });

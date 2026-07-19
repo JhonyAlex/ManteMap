@@ -103,8 +103,8 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [mobileOpen, closeMobile]);
 
-  function isActiveProject(projectId: string) {
-    return pathname.startsWith(`/projects/${projectId}`);
+  function isActiveProject(projectCode: string) {
+    return pathname.startsWith(`/projects/${projectCode}`);
   }
 
   function handleToggle() {
@@ -198,11 +198,11 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
           ) : (
             <ul className="space-y-1">
               {projects.map((project) => {
-                const active = isActiveProject(project.id);
+                const active = isActiveProject(project.code);
                 return (
                   <li key={project.id}>
                     <Link
-                      href={`/projects/${project.id}`}
+                      href={`/projects/${project.code}`}
                       aria-current={active ? 'page' : undefined}
                       className={`block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                         active && !pathname.includes('/items')
@@ -216,7 +216,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                     {active && (
                       <>
                         <Link
-                          href={`/projects/${project.id}/dashboard`}
+                          href={`/projects/${project.code}/dashboard`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/dashboard')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
@@ -227,7 +227,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Dashboard
                         </Link>
                         <Link
-                          href={`/projects/${project.id}/items`}
+                          href={`/projects/${project.code}/items`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/items')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
@@ -238,7 +238,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Items
                         </Link>
                         <Link
-                          href={`/projects/${project.id}/item-types`}
+                          href={`/projects/${project.code}/item-types`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/item-types')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
@@ -249,7 +249,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Item Types
                         </Link>
                         <Link
-                          href={`/projects/${project.id}/locations`}
+                          href={`/projects/${project.code}/locations`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/locations')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
@@ -260,7 +260,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Locations
                         </Link>
                         <Link
-                          href={`/projects/${project.id}/floor-plans`}
+                          href={`/projects/${project.code}/floor-plans`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/floor-plans')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
@@ -271,7 +271,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Floor Plans
                         </Link>
                         <Link
-                          href={`/projects/${project.id}/calendar`}
+                          href={`/projects/${project.code}/calendar`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/calendar')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
@@ -282,7 +282,7 @@ export function Sidebar({ projects, user, backgroundId = 'dashboard-background' 
                           Calendar
                         </Link>
                         <Link
-                          href={`/projects/${project.id}/alerts`}
+                          href={`/projects/${project.code}/alerts`}
                           className={`ml-4 block min-h-11 rounded-md px-3 py-2.5 text-sm transition-colors motion-reduce:transition-none ${
                             pathname.includes('/alerts')
                               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateProjectSchema } from '@mantemap/validation';
-import { getProjectById, updateProject } from '@/lib/services/project-service';
+import { getProjectById, updateProject, resolveProjectId } from '@/lib/services/project-service';
 import { getAuthUser } from '@/lib/auth/session';
 import { badRequest, notFound, forbidden, internalError } from '@/lib/http/api-error';
 import { NotFoundError, AuthorizationError } from '@mantemap/shared';

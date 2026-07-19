@@ -40,7 +40,7 @@ export function ProjectSummaryCard({
 }: ProjectSummaryCardProps) {
   return (
     <Link
-      href={`/projects/${projectId}/dashboard`}
+      href={`/projects/${projectCode}/dashboard`}
       className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <Card className="transition-colors hover:bg-accent">

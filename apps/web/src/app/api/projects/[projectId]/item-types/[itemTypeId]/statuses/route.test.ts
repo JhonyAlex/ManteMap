@@ -7,6 +7,10 @@ vi.mock('@/lib/services/status-service', () => ({
 }));
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET, POST } from './route';
 import { createStatus, listStatuses } from '@/lib/services/status-service';
 import { getAuthUser } from '@/lib/auth/session';

@@ -1,3 +1,4 @@
+import { resolveProjectId } from '@/lib/services/project-service';
 import { NextResponse } from 'next/server';
 import { AuthorizationError, NotFoundError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
@@ -11,7 +12,8 @@ export async function GET(
   const auth = await getAuthUser();
   if ('error' in auth) return auth.error;
   try {
-    const { projectId, floorPlanId } = await params;
+    const { projectId: paramRaw, floorPlanId } = await params;
+    const projectId = await resolveProjectId(paramRaw);
     const result = await getFloorPlanImage(projectId, floorPlanId, auth.user.id);
 
     return new NextResponse(new Uint8Array(result.buffer), {

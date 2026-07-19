@@ -7,6 +7,10 @@ vi.mock('@/lib/services/event-service', () => ({
 }));
 vi.mock('@/lib/auth/session', () => ({ getAuthUser: vi.fn() }));
 
+vi.mock('@/lib/services/project-service', () => ({
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
+}));
+
 import { GET, POST } from './route';
 import { createEvent, getEventsInRange } from '@/lib/services/event-service';
 import { getAuthUser } from '@/lib/auth/session';

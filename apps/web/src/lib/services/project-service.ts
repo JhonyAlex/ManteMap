@@ -12,6 +12,77 @@ import {
 import { runSerializable } from '@/lib/repositories/transaction-repository';
 import { requireProjectMember, requireProjectOwner } from '@/lib/services/project-access-service';
 
+// ── Phase 3 Helpers ──────────────────────────────────────────────────────
+
+/**
+ * Resolve a project parameter (code or CUID) to its internal CUID.
+ *
+ * Tries code lookup first, then falls back to CUID lookup.
+ * Used by API route handlers to accept both `project.code` and `project.id`
+ * in the `[projectId]` dynamic segment without renaming 44 route files.
+ *
+ * @param param - the raw URL parameter (may be a code or CUID)
+ * @returns the resolved project CUID
+ * @throws NotFoundError if neither code nor CUID matches any project
+ */
+export async function resolveProjectId(param: string): Promise<string> {
+  const byCode = await findProjectByCode(param);
+  if (byCode) return byCode.id;
+
+  const byId = await findProjectById(param);
+  if (byId) return byId.id;
+
+  throw new NotFoundError('Project', param);
+}
+
+/**
+ * Get a project by its unique code, scoped to membership.
+ *
+ * Non-members receive NotFoundError (404) to avoid disclosing project existence.
+ * This is the code-based equivalent of `getProjectById`.
+ *
+ * @param projectCode - the project code (e.g. "MAP-001")
+ * @param userId       - the authenticated user's ID
+ * @returns the project data
+ * @throws NotFoundError if code doesn't match or user is not a member
+ */
+export async function getProjectByCode(
+  projectCode: string,
+  userId: string
+): Promise<{
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    status: string;
+    ownerId: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}> {
+  const project = await findProjectByCode(projectCode);
+  if (!project) {
+    throw new NotFoundError('Project', projectCode);
+  }
+
+  // Delegate membership check to access service (handles 404 for non-members)
+  await requireProjectMember(project.id, userId);
+
+  return {
+    project: {
+      id: project.id,
+      code: project.code,
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      ownerId: project.ownerId,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    },
+  };
+}
+
 /**
  * Testing seams forwarded to the repository.
  * Production code MUST NOT set these options.

@@ -117,4 +117,5 @@ describe('Global Dashboard Page — Cross-Project Summaries', () => {
     expect(screen.getByText('ALPHA')).toBeInTheDocument();
     expect(screen.getByText('BETA')).toBeInTheDocument();
   });
+  resolveProjectId: vi.fn((id: string) => Promise.resolve(id)),
 });
