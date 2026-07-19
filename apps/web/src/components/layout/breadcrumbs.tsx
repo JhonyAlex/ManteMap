@@ -5,6 +5,7 @@
  *
  * Renders breadcrumb navigation from the current pathname.
  * Uses semantic nav landmark with ordered list.
+ * Accepts an optional projectNames map to resolve project IDs to names.
  *
  * Spec: specs/application-shell/spec.md — "Responsive and accessible navigation"
  */
@@ -18,7 +19,15 @@ interface BreadcrumbItem {
   href: string;
 }
 
-function pathToBreadcrumbs(pathname: string): BreadcrumbItem[] {
+interface BreadcrumbsProps {
+  /** Map of project ID → project name for resolving breadcrumb labels */
+  projectNames?: Record<string, string>;
+}
+
+function pathToBreadcrumbs(
+  pathname: string,
+  projectNames?: Record<string, string>
+): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean);
   const items: BreadcrumbItem[] = [{ label: 'Dashboard', href: '/dashboard' }];
 
@@ -33,17 +42,21 @@ function pathToBreadcrumbs(pathname: string): BreadcrumbItem[] {
     // Skip the root dashboard entry (already added)
     if (segment === 'dashboard') continue;
 
-    // Capitalize and format segment
-    const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+    // If this segment matches a known project ID, use its name
+    const projectName = projectNames?.[segment];
+    const label = projectName
+      ? projectName
+      : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+
     items.push({ label, href: currentPath });
   }
 
   return items;
 }
 
-export function Breadcrumbs() {
+export function Breadcrumbs({ projectNames }: BreadcrumbsProps) {
   const pathname = usePathname();
-  const items = pathToBreadcrumbs(pathname);
+  const items = pathToBreadcrumbs(pathname, projectNames);
 
   return (
     <nav aria-label="Breadcrumb" className="py-3">

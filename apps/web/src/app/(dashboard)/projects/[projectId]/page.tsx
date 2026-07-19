@@ -1,25 +1,44 @@
 import React from 'react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getProjectById } from '@/lib/services/project-service';
+import { getProjectMetrics } from '@/lib/services/metrics-service';
 import { NotFoundError } from '@mantemap/shared';
 
-/**
- * Project page — Server Component.
- *
- * Resolves project access server-side. Non-members receive a safe
- * not-found result (404) to avoid disclosing project existence.
- * Only accessible projects render their details.
- *
- * Spec: specs/application-shell/spec.md — "Inaccessible context"
- * Design: design.md — "Non-members receive NotFoundError (404) to avoid disclosing project existence"
- */
-
-export default async function ProjectPage({
-  params,
-}: {
+interface ProjectHubPageProps {
   params: Promise<{ projectId: string }>;
-}) {
+}
+
+const quickLinks = [
+  {
+    href: (id: string) => `/projects/${id}/dashboard`,
+    label: 'Dashboard',
+    description: 'KPIs, activity timeline, and data exports.',
+  },
+  {
+    href: (id: string) => `/projects/${id}/item-types`,
+    label: 'Item Types',
+    description: 'Configure item types, dynamic fields, and statuses.',
+  },
+  {
+    href: (id: string) => `/projects/${id}/items`,
+    label: 'Items',
+    description: 'Manage assets, documents, and field values.',
+  },
+  {
+    href: (id: string) => `/projects/${id}/calendar`,
+    label: 'Calendar',
+    description: 'Schedule events with recurrence and expiration tracking.',
+  },
+  {
+    href: (id: string) => `/projects/${id}/alerts`,
+    label: 'Alerts',
+    description: 'View and configure alerts and notification preferences.',
+  },
+];
+
+export default async function ProjectPage({ params }: ProjectHubPageProps) {
   const { projectId } = await params;
   const user = await getCurrentUser();
 
@@ -32,13 +51,17 @@ export default async function ProjectPage({
     const result = await getProjectById(projectId, user.id);
     project = result.project;
   } catch (error) {
-    // NotFoundError for non-members or non-existent projects
-    // AuthorizationError would also result in not-found for safety
     if (error instanceof NotFoundError) {
       notFound();
     }
-    // Re-throw unexpected errors
     throw error;
+  }
+
+  let metrics;
+  try {
+    metrics = await getProjectMetrics(projectId, user.id);
+  } catch {
+    metrics = null;
   }
 
   return (
@@ -47,15 +70,35 @@ export default async function ProjectPage({
         <p className="mb-6 text-muted-foreground">{project.description}</p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-          <p className="mt-1 text-sm font-semibold">{project.status}</p>
+      {metrics && (
+        <div className="mb-8 grid grid-cols-3 gap-3">
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-2xl font-bold">{metrics.totalItems}</p>
+            <p className="text-xs text-muted-foreground">Items</p>
+          </div>
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-2xl font-bold">{metrics.activeAlerts}</p>
+            <p className="text-xs text-muted-foreground">Active Alerts</p>
+          </div>
+          <div className="rounded-lg border p-3 text-center">
+            <p className="text-2xl font-bold">{metrics.documentsExpiringSoon}</p>
+            <p className="text-xs text-muted-foreground">Expiring Docs</p>
+          </div>
         </div>
-        <div className="rounded-lg border p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Code</h3>
-          <p className="mt-1 text-sm font-semibold">{project.code}</p>
-        </div>
+      )}
+
+      <h2 className="mb-3 text-lg font-semibold">Quick Actions</h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {quickLinks.map((link) => (
+          <Link
+            key={link.label}
+            href={link.href(projectId)}
+            className="rounded-lg border p-4 transition-colors hover:bg-accent"
+          >
+            <h3 className="font-medium">{link.label}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{link.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );

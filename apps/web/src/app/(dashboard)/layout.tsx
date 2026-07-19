@@ -40,6 +40,11 @@ export default async function DashboardLayout({
     name: p.name,
   }));
 
+  const projectNames: Record<string, string> = {};
+  for (const p of sidebarProjects) {
+    projectNames[p.id] = p.name;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Skip to content link — accessible keyboard navigation */}
@@ -60,7 +65,7 @@ export default async function DashboardLayout({
       {/* Main content area */}
       <div id="dashboard-background" className="flex flex-1 flex-col overflow-y-auto">
         <header className="border-b border-border px-6">
-          <Breadcrumbs />
+          <Breadcrumbs projectNames={projectNames} />
         </header>
 
         <main id="content" tabIndex={-1} className="flex-1 px-6 py-8">
