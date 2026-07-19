@@ -4,6 +4,19 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateProjectSchema, type UpdateProjectInput } from '@mantemap/validation';
 import { ZodError } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Textarea,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -22,14 +35,13 @@ export interface ProjectSettingsProps {
 export function ProjectSettings({ projectId, currentName, currentDescription }: ProjectSettingsProps) {
   const router = useRouter();
 
-  // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // Archive state
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
 
   function openEdit() {
@@ -68,6 +80,7 @@ export function ProjectSettings({ projectId, currentName, currentDescription }: 
       if (res.ok) {
         setEditOpen(false);
         router.refresh();
+        toast.success('Project updated.');
       } else {
         const body = await res.json().catch(() => ({}));
         setEditError(body.message || 'Failed to update project.');
@@ -80,10 +93,6 @@ export function ProjectSettings({ projectId, currentName, currentDescription }: 
   }
 
   async function handleArchive() {
-    if (!confirm('Are you sure you want to archive this project? It will be hidden from active views.')) {
-      return;
-    }
-
     setIsArchiving(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/archive`, {
@@ -92,12 +101,13 @@ export function ProjectSettings({ projectId, currentName, currentDescription }: 
 
       if (res.ok) {
         router.push('/projects');
+        toast.success('Project archived.');
       } else {
         const body = await res.json().catch(() => ({}));
-        alert(body.message || 'Failed to archive project.');
+        toast.error(body.message || 'Failed to archive project.');
       }
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     } finally {
       setIsArchiving(false);
     }
@@ -108,90 +118,95 @@ export function ProjectSettings({ projectId, currentName, currentDescription }: 
       <div className="rounded-lg border p-4">
         <h3 className="mb-3 font-semibold">Project Settings</h3>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={openEdit}
-            className="inline-flex h-9 items-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
+          <Button variant="outline" onClick={openEdit}>
             Edit Project
-          </button>
-          <button
-            type="button"
-            onClick={handleArchive}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setArchiveOpen(true)}
             disabled={isArchiving}
-            className="inline-flex h-9 items-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10 disabled:opacity-50"
+            className="border-destructive text-destructive hover:bg-destructive/10"
           >
             {isArchiving ? 'Archiving...' : 'Archive Project'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Edit dialog — inline modal */}
-      {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold">Edit Project</h2>
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>
+              Update the project name and description.
+            </DialogDescription>
+          </DialogHeader>
 
-            {editError && (
-              <div
-                role="alert"
-                className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive"
-              >
-                {editError}
-              </div>
-            )}
+          {editError && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive"
+            >
+              {editError}
+            </div>
+          )}
 
-            <form onSubmit={handleEdit} noValidate className="space-y-4">
-              <div>
-                <label htmlFor="ps-name" className="mb-1 block text-sm font-medium">
-                  Name
-                </label>
-                <input
-                  id="ps-name"
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  maxLength={100}
-                />
-              </div>
+          <form onSubmit={handleEdit} noValidate className="space-y-4">
+            <div>
+              <Label htmlFor="ps-name">Name</Label>
+              <Input
+                id="ps-name"
+                type="text"
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                maxLength={100}
+                autoFocus
+              />
+            </div>
 
-              <div>
-                <label htmlFor="ps-desc" className="mb-1 block text-sm font-medium">
-                  Description <span className="text-muted-foreground">(optional)</span>
-                </label>
-                <textarea
-                  id="ps-desc"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  rows={3}
-                  maxLength={500}
-                />
-              </div>
+            <div>
+              <Label htmlFor="ps-desc">
+                Description <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Textarea
+                id="ps-desc"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={3}
+                maxLength={500}
+              />
+            </div>
 
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(false)}
-                  disabled={isSaving}
-                  className="inline-flex h-9 items-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={isSaving}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Archive Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to archive this project? It will be hidden from active views.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleArchive} disabled={isArchiving}>
+              {isArchiving ? 'Archiving...' : 'Archive'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

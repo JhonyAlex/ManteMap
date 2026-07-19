@@ -3,11 +3,6 @@
  *
  * Renders columns derived from showInList DynamicFields using buildColumns.
  * Uses TanStack Query (useItems) for data fetching with search and pagination.
- *
- * Spec: openspec/changes/phase-4-items-ui/specs/items-ui/spec.md
- *   "Items list page with dynamic columns"
- * Design: openspec/changes/phase-4-items-ui/design.md
- *   "Client Component with Table, search, pagination"
  */
 
 'use client';
@@ -22,7 +17,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Button,
+  Input,
+  Skeleton,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@mantemap/ui';
+import { toast } from 'sonner';
+import { FileText } from 'lucide-react';
 import { buildColumns } from './column-builder';
 import { renderCellValue } from './cell-renderer';
 import { useItems } from '@/hooks/use-items';
@@ -56,6 +62,8 @@ export function ItemList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   const { data: items, isLoading, error, refetch } = useItems({
     projectId,
     itemTypeId,
@@ -82,7 +90,6 @@ export function ItemList({
     setPage((p) => p + 1);
   }, []);
 
-  // Checkbox handlers
   const toggleItem = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -104,16 +111,17 @@ export function ItemList({
     }
   }, [items, selectedIds.size]);
 
-  // Batch delete
   const handleBatchDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Delete ${selectedIds.size} selected items? This action cannot be undone.`)) {
-      return;
-    }
+    setDeleteOpen(true);
+  }, [selectedIds]);
 
+  const handleBatchDeleteConfirm = useCallback(async () => {
     setIsBatchDeleting(true);
-    let succeeded = 0;
-    let failed = 0;
+    setDeleteOpen(false);
+
+    let successCount = 0;
+    let failedCount = 0;
 
     for (const id of selectedIds) {
       try {
@@ -121,17 +129,19 @@ export function ItemList({
           method: 'DELETE',
         });
         if (res.ok || res.status === 204) {
-          succeeded++;
+          successCount++;
         } else {
-          failed++;
+          failedCount++;
         }
       } catch {
-        failed++;
+        failedCount++;
       }
     }
 
-    if (failed > 0) {
-      alert(`${succeeded} item(s) deleted successfully. ${failed} item(s) failed to delete.`);
+    if (failedCount > 0) {
+      toast.warning(`${successCount} deleted, ${failedCount} failed`);
+    } else {
+      toast.success(`${successCount} items deleted`);
     }
 
     setSelectedIds(new Set());
@@ -142,8 +152,8 @@ export function ItemList({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading items...</p>
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
       </div>
     );
   }
@@ -161,27 +171,45 @@ export function ItemList({
 
   return (
     <div className="space-y-4">
+      {/* Batch Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Selected Items</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{selectedIds.size}</strong> selected items? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleBatchDeleteConfirm} disabled={isBatchDeleting}>
+              {isBatchDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Items`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Toolbar */}
       <div className="flex items-center gap-2">
-        <input
+        <Input
           type="text"
           placeholder="Search items..."
           value={search}
           onChange={handleSearchChange}
-          className="h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="max-w-sm"
         />
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={handleBatchDelete}
               disabled={isBatchDeleting}
-              className="inline-flex h-9 items-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+              className="border-destructive text-destructive hover:bg-destructive/10"
             >
               {isBatchDeleting
                 ? 'Deleting...'
                 : `Delete Selected (${selectedIds.size})`}
-            </button>
+            </Button>
           )}
           <Link
             href={`/projects/${projectId}/items/new?itemTypeId=${itemTypeId}`}
@@ -199,14 +227,22 @@ export function ItemList({
 
       {/* Table */}
       {!items || items.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="mb-3 text-muted-foreground">No items found.</p>
-          <Link
-            href={`/projects/${projectId}/items/new?itemTypeId=${itemTypeId}`}
-            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Create First Item
-          </Link>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No items found</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            {search ? 'Try adjusting your search.' : 'Create your first item to get started.'}
+          </p>
+          {!search && (
+            <Link
+              href={`/projects/${projectId}/items/new?itemTypeId=${itemTypeId}`}
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Create First Item
+            </Link>
+          )}
         </div>
       ) : (
         <>
@@ -246,8 +282,6 @@ export function ItemList({
                     </Link>
                   </TableCell>
                   {columns.slice(1).map((col) => {
-                    // For list view, we render name as a link above;
-                    // remaining columns show a dash (field values require detail API)
                     const itemRecord = item as unknown as Record<string, unknown>;
                     return (
                       <TableCell key={col.key}>
@@ -266,20 +300,22 @@ export function ItemList({
               Page {page} &middot; {items.length} item{items.length !== 1 ? 's' : ''}
             </p>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handlePrevPage}
                 disabled={page <= 1}
-                className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
               >
                 Previous
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleNextPage}
                 disabled={items.length < pageSize}
-                className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         </>

@@ -11,6 +11,26 @@ import {
   type UpdateLocationInput,
 } from '@mantemap/validation';
 import { ZodError } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Checkbox,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+  Skeleton,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
+import { Pencil, Trash2, GripVertical, Plus, MapPin } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,25 +88,25 @@ export default function LocationsPage({ params }: LocationsPageProps) {
   const [flatLocations, setFlatLocations] = useState<LocationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [showForm, setShowForm] = useState(false);
 
-  // Form state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
   const [level, setLevel] = useState<number>(0);
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [isCreating, setIsCreating] = useState(false);
 
-  // Edit state
-  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<LocationItem | null>(null);
   const [editName, setEditName] = useState('');
   const [editOrder, setEditOrder] = useState<number>(0);
   const [editActive, setEditActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [deletingLocationId, setDeletingLocationId] = useState<string | null>(null);
 
-  // Reorder state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState<LocationItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [isReordering, setIsReordering] = useState(false);
   const [reorderError, setReorderError] = useState<string | null>(null);
 
@@ -158,7 +178,7 @@ export default function LocationsPage({ params }: LocationsPageProps) {
   }
 
   // ---------------------------------------------------------------------------
-  // Submit
+  // Create
   // ---------------------------------------------------------------------------
 
   async function handleCreate(e: React.FormEvent) {
@@ -198,10 +218,11 @@ export default function LocationsPage({ params }: LocationsPageProps) {
         setName('');
         setParentId('');
         setLevel(0);
-        setShowForm(false);
+        setCreateDialogOpen(false);
         fetchTree();
         fetchFlat();
         router.refresh();
+        toast.success('Location created.');
         return;
       }
 
@@ -218,20 +239,18 @@ export default function LocationsPage({ params }: LocationsPageProps) {
   // Edit & Delete handlers
   // ---------------------------------------------------------------------------
 
-  function startEditing(loc: LocationItem) {
-    setEditingLocationId(loc.id);
+  function openEditDialog(loc: LocationItem) {
+    setEditingLocation(loc);
     setEditName(loc.name);
     setEditOrder(loc.order);
     setEditActive(loc.active);
     setErrors({});
+    setEditDialogOpen(true);
   }
 
-  function cancelEditing() {
-    setEditingLocationId(null);
-    setEditName('');
-    setEditOrder(0);
-    setEditActive(true);
-    setErrors({});
+  function openDeleteDialog(loc: LocationItem) {
+    setLocationToDelete(loc);
+    setDeleteOpen(true);
   }
 
   async function handleUpdate(locationId: string) {
@@ -267,10 +286,11 @@ export default function LocationsPage({ params }: LocationsPageProps) {
       });
 
       if (res.ok) {
-        cancelEditing();
+        setEditDialogOpen(false);
         fetchTree();
         fetchFlat();
         router.refresh();
+        toast.success('Location updated.');
       } else {
         const body = await res.json().catch(() => ({}));
         setErrors({ general: body.message || 'Failed to update location.' });
@@ -282,37 +302,50 @@ export default function LocationsPage({ params }: LocationsPageProps) {
     }
   }
 
-  async function handleDelete(locationId: string) {
-    if (!confirm('Are you sure you want to delete this location? This action cannot be undone.')) {
-      return;
-    }
-
-    setDeletingLocationId(locationId);
+  async function handleDeleteConfirm() {
+    if (!locationToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/locations/${locationId}`, {
+      const res = await fetch(`/api/projects/${projectId}/locations/${locationToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (res.status === 409) {
-        alert('This location has sub-locations. Delete them first.');
+        toast.error('This location has sub-locations. Delete them first.');
+        setDeleteOpen(false);
+        setLocationToDelete(null);
       } else if (res.ok || res.status === 204) {
+        setDeleteOpen(false);
+        setLocationToDelete(null);
         fetchTree();
         fetchFlat();
         router.refresh();
+        toast.success('Location deleted.');
       } else {
         const body = await res.json().catch(() => ({}));
-        alert(body.message || 'Failed to delete location.');
+        toast.error(body.message || 'Failed to delete location.');
       }
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     } finally {
-      setDeletingLocationId(null);
+      setIsDeleting(false);
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Reorder handlers
+  // Reorder via drag & drop (flat list)
   // ---------------------------------------------------------------------------
+
+  function handleDragReorder(draggedId: string, targetId: string) {
+    const sorted = [...flatLocations].sort((a, b) => a.order - b.order);
+    const draggedIdx = sorted.findIndex((l) => l.id === draggedId);
+    const targetIdx = sorted.findIndex((l) => l.id === targetId);
+    if (draggedIdx < 0 || targetIdx < 0 || draggedIdx === targetIdx) return;
+    const newSorted = [...sorted];
+    const [moved] = newSorted.splice(draggedIdx, 1);
+    newSorted.splice(targetIdx, 0, moved!);
+    handleReorder(newSorted.map((l) => l.id));
+  }
 
   async function handleReorder(newOrderedIds: string[]) {
     setReorderError(null);
@@ -334,6 +367,7 @@ export default function LocationsPage({ params }: LocationsPageProps) {
         fetchTree();
         fetchFlat();
         router.refresh();
+        toast.success('Locations reordered.');
       } else {
         const body = await res.json().catch(() => ({}));
         setReorderError(body.message || 'Failed to reorder locations.');
@@ -345,24 +379,6 @@ export default function LocationsPage({ params }: LocationsPageProps) {
     }
   }
 
-  function handleMoveUp(locId: string) {
-    const sorted = [...flatLocations].sort((a, b) => a.order - b.order);
-    const idx = sorted.findIndex((l) => l.id === locId);
-    if (idx <= 0) return;
-    const newOrder = [...sorted];
-    [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
-    handleReorder(newOrder.map((l) => l.id));
-  }
-
-  function handleMoveDown(locId: string) {
-    const sorted = [...flatLocations].sort((a, b) => a.order - b.order);
-    const idx = sorted.findIndex((l) => l.id === locId);
-    if (idx < 0 || idx >= sorted.length - 1) return;
-    const newOrder = [...sorted];
-    [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
-    handleReorder(newOrder.map((l) => l.id));
-  }
-
   // ---------------------------------------------------------------------------
   // Render tree node
   // ---------------------------------------------------------------------------
@@ -371,71 +387,7 @@ export default function LocationsPage({ params }: LocationsPageProps) {
     return nodes.map((node) => {
       const hasChildren = node.children && node.children.length > 0;
       const isExpanded = expandedNodes.has(node.id);
-      const isEditing = editingLocationId === node.id;
       const locData = flatLocations.find((l) => l.id === node.id);
-
-      if (isEditing && locData) {
-        return (
-          <div key={node.id}>
-            <div
-              className="rounded-md border bg-accent/20 px-2 py-2"
-              style={{ paddingLeft: `${depth * 20 + 8}px` }}
-            >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <span
-                  className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground shrink-0"
-                >
-                  {LEVEL_LABELS[node.level] ?? `L${node.level}`}
-                </span>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="flex-1 rounded-md border px-2 py-1 text-sm"
-                  maxLength={200}
-                  autoFocus
-                />
-                <label className="flex items-center gap-1 text-xs shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={editActive}
-                    onChange={(e) => setEditActive(e.target.checked)}
-                    className="rounded"
-                  />
-                  Active
-                </label>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleUpdate(node.id)}
-                    disabled={isSaving}
-                    className="rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelEditing}
-                    disabled={isSaving}
-                    className="rounded border px-2.5 py-1 text-xs hover:bg-accent disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-              {errors.general && (
-                <p className="mt-1 text-xs text-destructive">{errors.general}</p>
-              )}
-              {errors.name && (
-                <p className="mt-1 text-xs text-destructive">{errors.name}</p>
-              )}
-            </div>
-            {hasChildren && isExpanded && (
-              <div>{renderTreeNode(node.children!, depth + 1)}</div>
-            )}
-          </div>
-        );
-      }
 
       return (
         <div key={node.id}>
@@ -457,28 +409,29 @@ export default function LocationsPage({ params }: LocationsPageProps) {
             </span>
             <span className="text-sm flex-1">{node.name}</span>
             <span className="hidden gap-1 group-hover:flex">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   const loc = flatLocations.find((l) => l.id === node.id);
-                  if (loc) startEditing(loc);
+                  if (loc) openEditDialog(loc);
                 }}
-                className="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-accent"
               >
-                Edit
-              </button>
-              <button
-                type="button"
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDelete(node.id);
+                  const loc = flatLocations.find((l) => l.id === node.id);
+                  if (loc) openDeleteDialog(loc);
                 }}
-                disabled={deletingLocationId === node.id}
-                className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                className="text-destructive hover:text-destructive/80"
               >
-                {deletingLocationId === node.id ? 'Deleting...' : 'Delete'}
-              </button>
+                <Trash2 className="h-3 w-3" />
+              </Button>
             </span>
           </div>
           {hasChildren && isExpanded && (
@@ -503,118 +456,187 @@ export default function LocationsPage({ params }: LocationsPageProps) {
             Manage your location hierarchy: centers, buildings, floors, rooms, and zones.
           </p>
         </div>
-        {!showForm && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Add Location
-          </button>
-        )}
+        <Button onClick={() => { setCreateDialogOpen(true); setErrors({}); }}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Location
+        </Button>
       </div>
 
-      {/* Create form */}
-      {showForm && (
-        <form onSubmit={handleCreate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">New Location</h3>
+      {/* Create Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={(open) => { if (!open) setCreateDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Location</DialogTitle>
+            <DialogDescription>
+              Create a new location in the hierarchy.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} noValidate className="space-y-4">
+            {errors.general && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+                {errors.general}
+              </div>
+            )}
 
-          {errors.general && (
-            <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-              {errors.general}
-            </div>
-          )}
-
-          <div className="space-y-4">
             <div>
-              <label htmlFor="loc-name" className="mb-1 block text-sm font-medium">Name</label>
-              <input
+              <Label htmlFor="loc-name">Name</Label>
+              <Input
                 id="loc-name"
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 placeholder="e.g. Main Building"
                 maxLength={200}
+                autoFocus
               />
               {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="loc-level" className="mb-1 block text-sm font-medium">Level</label>
-                <select
-                  id="loc-level"
-                  value={level}
-                  onChange={(e) => setLevel(Number(e.target.value))}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                >
-                  {Object.entries(LEVEL_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>{label} ({val})</option>
-                  ))}
-                </select>
+                <Label htmlFor="loc-level">Level</Label>
+                <Select value={String(level)} onValueChange={(v) => setLevel(Number(v))}>
+                  <SelectTrigger id="loc-level">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LEVEL_LABELS).map(([val, label]) => (
+                      <SelectItem key={val} value={val}>{label} ({val})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {errors.level && <p className="mt-1 text-sm text-destructive">{errors.level}</p>}
               </div>
 
               <div>
-                <label htmlFor="loc-parent" className="mb-1 block text-sm font-medium">
+                <Label htmlFor="loc-parent">
                   Parent <span className="text-muted-foreground">(optional)</span>
-                </label>
-                <select
-                  id="loc-parent"
-                  value={parentId}
-                  onChange={(e) => setParentId(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                >
-                  <option value="">None (root level)</option>
-                  {flatLocations
-                    .filter((l) => l.active)
-                    .map((l) => (
-                      <option key={l.id} value={l.id}>
-                        [{LEVEL_LABELS[l.level] ?? `L${l.level}`}] {l.name}
-                      </option>
-                    ))}
-                </select>
+                </Label>
+                <Select value={parentId} onValueChange={(v) => setParentId(v === 'none' ? '' : v)}>
+                  <SelectTrigger id="loc-parent">
+                    <SelectValue placeholder="None (root level)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (root level)</SelectItem>
+                    {flatLocations
+                      .filter((l) => l.active)
+                      .map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          [{LEVEL_LABELS[l.level] ?? `L${l.level}`}] {l.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
                 {errors.parentId && <p className="mt-1 text-sm text-destructive">{errors.parentId}</p>}
               </div>
             </div>
-          </div>
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isCreating ? 'Creating...' : 'Create Location'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); setErrors({}); }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create Location'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Location</DialogTitle>
+            <DialogDescription>
+              Update the location details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {errors.general && (
+              <p className="text-sm text-destructive">{errors.general}</p>
+            )}
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name}</p>
+            )}
+
+            <div>
+              <Label htmlFor="edit-loc-name">Name</Label>
+              <Input
+                id="edit-loc-name"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                maxLength={200}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-loc-order">Order</Label>
+              <Input
+                id="edit-loc-order"
+                type="number"
+                value={editOrder}
+                onChange={(e) => setEditOrder(Number(e.target.value))}
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={editActive}
+                onCheckedChange={(checked) => setEditActive(checked === true)}
+              />
+              Active
+            </label>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+              <Button onClick={() => editingLocation && handleUpdate(editingLocation.id)} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </DialogFooter>
           </div>
-        </form>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {locationToDelete?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{locationToDelete?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Tree view */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : tree.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="mb-3 text-muted-foreground">
-            No locations configured yet. Create your first location to start building your hierarchy.
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+        </div>
+      ) : tree.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <MapPin className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No locations yet</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            Create your first location to start building your hierarchy.
           </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <Button onClick={() => { setCreateDialogOpen(true); setErrors({}); }}>
+            <Plus className="mr-1 h-4 w-4" />
             Add First Location
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="rounded-lg border">
@@ -622,20 +644,12 @@ export default function LocationsPage({ params }: LocationsPageProps) {
           <div className="flex items-center justify-between border-b px-3 py-2">
             <h3 className="text-sm font-medium">Hierarchy</h3>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={expandAll}
-                className="text-xs text-primary hover:underline"
-              >
+              <Button variant="ghost" size="sm" onClick={expandAll}>
                 Expand All
-              </button>
-              <button
-                type="button"
-                onClick={collapseAll}
-                className="text-xs text-primary hover:underline"
-              >
+              </Button>
+              <Button variant="ghost" size="sm" onClick={collapseAll}>
                 Collapse All
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -659,72 +673,23 @@ export default function LocationsPage({ params }: LocationsPageProps) {
             </div>
           )}
           <div className="space-y-1">
-            {(() => {
-              const sorted = [...flatLocations].sort((a, b) => a.order - b.order);
-              const firstId = sorted[0]?.id;
-              const lastId = sorted[sorted.length - 1]?.id;
-
-              return flatLocations.map((loc) => {
-                const isFirst = loc.id === firstId;
-                const isLast = loc.id === lastId;
-                const isEditing = editingLocationId === loc.id;
-
-              if (isEditing) {
-                return (
-                  <div key={loc.id} className="rounded-md border bg-accent/20 px-3 py-2">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground shrink-0">
-                        {LEVEL_LABELS[loc.level] ?? `L${loc.level}`}
-                      </span>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="flex-1 rounded-md border px-2 py-1 text-sm"
-                        maxLength={200}
-                        autoFocus
-                      />
-                      <label className="flex items-center gap-1 text-xs shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={editActive}
-                          onChange={(e) => setEditActive(e.target.checked)}
-                          className="rounded"
-                        />
-                        Active
-                      </label>
-                      <div className="flex gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdate(loc.id)}
-                          disabled={isSaving}
-                          className="rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                        >
-                          {isSaving ? 'Saving...' : 'Save'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditing}
-                          disabled={isSaving}
-                          className="rounded border px-2.5 py-1 text-xs hover:bg-accent disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                    {errors.general && (
-                      <p className="mt-1 text-xs text-destructive">{errors.general}</p>
-                    )}
-                    {errors.name && (
-                      <p className="mt-1 text-xs text-destructive">{errors.name}</p>
-                    )}
-                  </div>
-                );
-              }
-
-              return (
-                <div key={loc.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+            {[...flatLocations]
+              .sort((a, b) => a.order - b.order)
+              .map((loc) => (
+                <div
+                  key={loc.id}
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', loc.id); }}
+                  onDragOver={(e) => { e.preventDefault(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    handleDragReorder(draggedId, loc.id);
+                  }}
+                  className="flex cursor-grab items-center justify-between rounded-md border px-3 py-2 text-sm active:cursor-grabbing"
+                >
                   <div className="flex items-center gap-2">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
                     <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                       {LEVEL_LABELS[loc.level] ?? `L${loc.level}`}
                     </span>
@@ -742,43 +707,24 @@ export default function LocationsPage({ params }: LocationsPageProps) {
                         {flatLocations.find((l) => l.id === loc.parentId)?.name ?? loc.parentId}
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => handleMoveUp(loc.id)}
-                      disabled={isFirst || isReordering}
-                      title={isFirst ? 'Already first' : 'Move up'}
-                      className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(loc)}
                     >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveDown(loc.id)}
-                      disabled={isLast || isReordering}
-                      title={isLast ? 'Already last' : 'Move down'}
-                      className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed"
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openDeleteDialog(loc)}
+                      className="text-destructive hover:text-destructive/80"
                     >
-                      ▼
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startEditing(loc)}
-                      className="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-accent"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(loc.id)}
-                      disabled={deletingLocationId === loc.id}
-                      className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                    >
-                      {deletingLocationId === loc.id ? 'Deleting...' : 'Delete'}
-                    </button>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
-              );
-            });})()}
+              ))}
           </div>
         </div>
       )}

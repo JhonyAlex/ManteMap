@@ -3,6 +3,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Checkbox,
+  Skeleton,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
+import { Trash2, Plus, Link2 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,7 +46,7 @@ interface WebhooksPageProps {
 }
 
 // ---------------------------------------------------------------------------
-// Available event types (from the codebase)
+// Available event types
 // ---------------------------------------------------------------------------
 
 const EVENT_TYPES = [
@@ -58,9 +73,8 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
 
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
-  const [showForm, setShowForm] = useState(false);
 
-  // Form state
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [secret, setSecret] = useState('');
@@ -69,8 +83,9 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isCreating, setIsCreating] = useState(false);
 
-  // Delete state
-  const [deletingWebhookId, setDeletingWebhookId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [webhookToDelete, setWebhookToDelete] = useState<WebhookEndpoint | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -123,11 +138,15 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
     setErrors({});
   }
 
+  function openCreateDialog() {
+    resetForm();
+    setDialogOpen(true);
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
-    // Client-side validation
     const fieldErrors: FormErrors = {};
     if (!name.trim()) {
       fieldErrors.name = 'Name is required.';
@@ -165,9 +184,10 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
 
       if (res.status === 201) {
         resetForm();
-        setShowForm(false);
+        setDialogOpen(false);
         fetchWebhooks();
         router.refresh();
+        toast.success('Webhook created.');
         return;
       }
 
@@ -184,27 +204,34 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
   // Delete
   // ---------------------------------------------------------------------------
 
-  async function handleDelete(webhookId: string) {
-    if (!confirm('Delete this webhook endpoint? This action cannot be undone.')) return;
+  function openDeleteDialog(wh: WebhookEndpoint) {
+    setWebhookToDelete(wh);
+    setDeleteOpen(true);
+  }
 
-    setDeletingWebhookId(webhookId);
+  async function handleDeleteConfirm() {
+    if (!webhookToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/webhooks/${webhookId}`, {
+      const res = await fetch(`/api/projects/${projectId}/webhooks/${webhookToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (res.ok) {
+        setDeleteOpen(false);
+        setWebhookToDelete(null);
         fetchWebhooks();
         router.refresh();
+        toast.success('Webhook deleted.');
         return;
       }
 
       const body = await res.json().catch(() => ({}));
-      alert(body.message || 'Failed to delete webhook.');
+      toast.error(body.message || 'Failed to delete webhook.');
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     } finally {
-      setDeletingWebhookId(null);
+      setIsDeleting(false);
     }
   }
 
@@ -238,15 +265,10 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
             Configure webhook endpoints to receive event notifications.
           </p>
         </div>
-        {!showForm && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Add Webhook
-          </button>
-        )}
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Webhook
+        </Button>
       </div>
 
       {/* Breadcrumb */}
@@ -259,78 +281,76 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
         </Link>
       </div>
 
-      {/* Create form */}
-      {showForm && (
-        <form onSubmit={handleCreate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">New Webhook Endpoint</h3>
+      {/* Create Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Webhook Endpoint</DialogTitle>
+            <DialogDescription>
+              Configure a webhook to receive event notifications.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} noValidate className="space-y-4">
+            {errors.general && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+                {errors.general}
+              </div>
+            )}
 
-          {errors.general && (
-            <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-              {errors.general}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {/* Name */}
             <div>
-              <label htmlFor="wh-name" className="mb-1 block text-sm font-medium">Name</label>
-              <input
+              <Label htmlFor="wh-name">Name</Label>
+              <Input
                 id="wh-name"
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 placeholder="e.g. Slack Notifier"
                 maxLength={200}
+                autoFocus
               />
               {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
             </div>
 
-            {/* URL */}
             <div>
-              <label htmlFor="wh-url" className="mb-1 block text-sm font-medium">URL</label>
-              <input
+              <Label htmlFor="wh-url">URL</Label>
+              <Input
                 id="wh-url"
                 type="url"
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 placeholder="https://hooks.example.com/webhook"
               />
               {errors.url && <p className="mt-1 text-sm text-destructive">{errors.url}</p>}
             </div>
 
-            {/* Secret */}
             <div>
-              <label htmlFor="wh-secret" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="wh-secret">
                 Secret <span className="text-muted-foreground">(optional)</span>
-              </label>
-              <input
+              </Label>
+              <Input
                 id="wh-secret"
                 type="text"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+                className="font-mono"
                 placeholder="HMAC signing secret"
               />
             </div>
 
             {/* Event Types */}
             <div>
-              <label className="mb-2 block text-sm font-medium">Event Types</label>
+              <Label className="mb-2 block">Event Types</Label>
               <div className="grid grid-cols-1 gap-1.5 rounded-md border p-3 sm:grid-cols-2">
                 {EVENT_TYPES.map((et) => (
                   <label
                     key={et}
                     className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent/50 cursor-pointer"
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedEvents.has(et)}
-                      onChange={() => toggleEventType(et)}
-                      className="rounded"
+                      onCheckedChange={() => toggleEventType(et)}
                     />
                     <span className="select-none text-xs">{et.replace(/_/g, ' ')}</span>
                   </label>
@@ -342,11 +362,9 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
             {/* Active toggle */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={active}
-                  onChange={(e) => setActive(e.target.checked)}
-                  className="rounded"
+                  onCheckedChange={(checked) => setActive(checked === true)}
                 />
                 Active
               </label>
@@ -354,42 +372,55 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
                 Inactive webhooks will not receive event notifications.
               </p>
             </div>
-          </div>
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isCreating ? 'Creating...' : 'Create Webhook'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); resetForm(); }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create Webhook'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {webhookToDelete?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{webhookToDelete?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Webhooks list */}
       {isLoadingList ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : webhooks.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="mb-3 text-muted-foreground">
-            No webhooks configured. Create your first webhook to receive event notifications.
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+        </div>
+      ) : webhooks.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <Link2 className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No webhooks yet</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            Create your first webhook to receive event notifications.
           </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-1 h-4 w-4" />
             Add First Webhook
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -427,14 +458,14 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
                   <span className="text-xs text-muted-foreground">
                     {formatDate(wh.createdAt)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(wh.id)}
-                    disabled={deletingWebhookId === wh.id}
-                    className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openDeleteDialog(wh)}
+                    className="text-destructive hover:text-destructive/80"
                   >
-                    {deletingWebhookId === wh.id ? 'Deleting...' : 'Delete'}
-                  </button>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             </div>

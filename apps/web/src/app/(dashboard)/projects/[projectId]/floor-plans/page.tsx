@@ -4,6 +4,25 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createFloorPlanSchema, type CreateFloorPlanInput } from '@mantemap/validation';
 import { ZodError } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+  Skeleton,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
+import { Trash2, Plus, Map } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,9 +83,8 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
   const [floorPlans, setFloorPlans] = useState<FloorPlanItem[]>([]);
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
 
-  // Form state
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -74,9 +92,11 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
   const [height, setHeight] = useState('600');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [isCreating, setIsCreating] = useState(false);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<FloorPlanItem | null>(null);
   const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
@@ -122,7 +142,6 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate extension
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
     const allowedExts = ['.png', '.jpg', '.jpeg', '.svg'];
     if (!allowedExts.includes(ext)) {
@@ -130,7 +149,6 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
       return;
     }
 
-    // Validate size (10 MB)
     if (file.size > 10 * 1024 * 1024) {
       setErrors({ file: 'File size exceeds 10 MB limit.' });
       return;
@@ -198,7 +216,6 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
       formData.append('name', name.trim());
       formData.append('locationId', selectedLocationId);
 
-      // Get image dimensions from the file
       const dims = await getImageDimensions(selectedFile);
       formData.append('width', String(dims.width));
       formData.append('height', String(dims.height));
@@ -210,9 +227,10 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
 
       if (res.status === 201) {
         resetForm();
-        setShowForm(false);
+        setDialogOpen(false);
         fetchFloorPlans();
         router.refresh();
+        toast.success('Floor plan uploaded.');
         return;
       }
 
@@ -236,9 +254,10 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
 
       if (res.status === 201) {
         resetForm();
-        setShowForm(false);
+        setDialogOpen(false);
         fetchFloorPlans();
         router.refresh();
+        toast.success('Floor plan created.');
         return;
       }
 
@@ -277,26 +296,31 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
     setErrors({});
   }
 
-  async function handleDelete(planId: string, planName: string) {
-    if (!confirm(`Delete floor plan "${planName}"? This action cannot be undone.`)) {
-      return;
-    }
+  function openDeleteDialog(plan: FloorPlanItem) {
+    setPlanToDelete(plan);
+    setDeleteOpen(true);
+  }
 
-    setDeletingPlanId(planId);
+  async function handleDeleteConfirm() {
+    if (!planToDelete) return;
+    setDeletingPlanId(planToDelete.id);
     try {
-      const res = await fetch(`/api/projects/${projectId}/floor-plans/${planId}`, {
+      const res = await fetch(`/api/projects/${projectId}/floor-plans/${planToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (res.ok || res.status === 204) {
+        setDeleteOpen(false);
+        setPlanToDelete(null);
         fetchFloorPlans();
         router.refresh();
+        toast.success('Floor plan deleted.');
       } else {
         const body = await res.json().catch(() => ({}));
-        alert(body.message || 'Failed to delete floor plan.');
+        toast.error(body.message || 'Failed to delete floor plan.');
       }
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     } finally {
       setDeletingPlanId(null);
     }
@@ -309,8 +333,6 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
       handleUrlUpload(e);
     }
   }
-
-  const selectedLocation = locations.find((l) => l.id === selectedLocationId);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -326,29 +348,28 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
             Upload and manage interactive floor plans with markers and polygons.
           </p>
         </div>
-        {!showForm && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Upload Plan
-          </button>
-        )}
+        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+          <Plus className="mr-1 h-4 w-4" />
+          Upload Plan
+        </Button>
       </div>
 
-      {/* Create/Upload form */}
-      {showForm && (
-        <form onSubmit={handleSubmit} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">Upload Floor Plan</h3>
+      {/* Upload Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Floor Plan</DialogTitle>
+            <DialogDescription>
+              Upload an image file or provide an image URL for a new floor plan.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {errors.general && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+                {errors.general}
+              </div>
+            )}
 
-          {errors.general && (
-            <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-              {errors.general}
-            </div>
-          )}
-
-          <div className="space-y-4">
             {/* Upload mode toggle */}
             <div className="flex rounded-md border">
               <button
@@ -377,13 +398,13 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
 
             {uploadMode === 'file' ? (
               <div>
-                <label htmlFor="fp-file" className="mb-1 block text-sm font-medium">Floor Plan Image</label>
-                <input
+                <Label htmlFor="fp-file">Floor Plan Image</Label>
+                <Input
                   id="fp-file"
                   type="file"
                   accept=".png,.jpg,.jpeg,.svg"
                   onChange={handleFileChange}
-                  className="w-full rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-sm file:text-primary-foreground"
+                  className="file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-sm file:text-primary-foreground"
                 />
                 {errors.file && <p className="mt-1 text-sm text-destructive">{errors.file}</p>}
                 {selectedFile && (
@@ -394,37 +415,34 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
               </div>
             ) : (
               <div>
-                <label htmlFor="fp-url" className="mb-1 block text-sm font-medium">Image URL</label>
-                <input
+                <Label htmlFor="fp-url">Image URL</Label>
+                <Input
                   id="fp-url"
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
                   placeholder="https://example.com/floor-plan.png"
                 />
                 {errors.imageUrl && <p className="mt-1 text-sm text-destructive">{errors.imageUrl}</p>}
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="fp-width" className="mb-1 block text-xs text-muted-foreground">Width (px)</label>
-                    <input
+                    <Label className="text-xs text-muted-foreground">Width (px)</Label>
+                    <Input
                       id="fp-width"
                       type="number"
                       value={width}
                       onChange={(e) => setWidth(e.target.value)}
-                      className="w-full rounded-md border px-3 py-2 text-sm"
                       min={1}
                     />
                     {errors.width && <p className="mt-1 text-sm text-destructive">{errors.width}</p>}
                   </div>
                   <div>
-                    <label htmlFor="fp-height" className="mb-1 block text-xs text-muted-foreground">Height (px)</label>
-                    <input
+                    <Label className="text-xs text-muted-foreground">Height (px)</Label>
+                    <Input
                       id="fp-height"
                       type="number"
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
-                      className="w-full rounded-md border px-3 py-2 text-sm"
                       min={1}
                     />
                     {errors.height && <p className="mt-1 text-sm text-destructive">{errors.height}</p>}
@@ -434,81 +452,93 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
             )}
 
             <div>
-              <label htmlFor="fp-name" className="mb-1 block text-sm font-medium">Plan Name</label>
-              <input
+              <Label htmlFor="fp-name">Plan Name</Label>
+              <Input
                 id="fp-name"
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 placeholder="e.g. First Floor"
                 maxLength={200}
+                autoFocus
               />
               {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
             </div>
 
             <div>
-              <label htmlFor="fp-location" className="mb-1 block text-sm font-medium">Location</label>
-              <select
-                id="fp-location"
-                value={selectedLocationId}
-                onChange={(e) => setSelectedLocationId(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-              >
-                <option value="">Select a location...</option>
-                {locations
-                  .filter((l) => l.active !== false)
-                  .map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      [{LEVEL_LABELS[loc.level] ?? `L${loc.level}`}] {loc.name}
-                    </option>
-                  ))}
-              </select>
+              <Label htmlFor="fp-location">Location</Label>
+              <Select value={selectedLocationId} onValueChange={(v) => setSelectedLocationId(v === 'none' ? '' : v)}>
+                <SelectTrigger id="fp-location">
+                  <SelectValue placeholder="Select a location..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Select a location...</SelectItem>
+                  {locations
+                    .filter((l) => l.active !== false)
+                    .map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        [{LEVEL_LABELS[loc.level] ?? `L${loc.level}`}] {loc.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
               {errors.locationId && <p className="mt-1 text-sm text-destructive">{errors.locationId}</p>}
             </div>
-          </div>
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isCreating ? 'Uploading...' : 'Upload Plan'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); resetForm(); }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? 'Uploading...' : 'Upload Plan'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {planToDelete?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{planToDelete?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deletingPlanId != null}>
+              {deletingPlanId != null ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Floor plans list */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : floorPlans.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="mb-3 text-muted-foreground">
-            No floor plans uploaded yet. Upload your first floor plan to start placing markers.
+        <div className="space-y-3">
+          {[1, 2].map(i => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
+        </div>
+      ) : floorPlans.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <Map className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No floor plans yet</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            Upload your first floor plan to start placing markers.
           </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+            <Plus className="mr-1 h-4 w-4" />
             Upload First Plan
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
           {floorPlans.map((plan) => (
             <div key={plan.id} className="overflow-hidden rounded-lg border">
-              {/* Thumbnail */}
               <div className="relative aspect-video bg-muted">
                 <img
                   src={plan.imageUrl}
@@ -517,8 +547,6 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
                   loading="lazy"
                 />
               </div>
-
-              {/* Info */}
               <div className="flex items-center justify-between p-3">
                 <div>
                   <p className="font-medium">{plan.name}</p>
@@ -539,14 +567,15 @@ export default function FloorPlansPage({ params }: FloorPlansPageProps) {
                   >
                     View
                   </a>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(plan.id, plan.name)}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openDeleteDialog(plan)}
                     disabled={deletingPlanId === plan.id}
-                    className="rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    className="text-destructive hover:text-destructive/80"
                   >
-                    {deletingPlanId === plan.id ? 'Deleting...' : 'Delete'}
-                  </button>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             </div>

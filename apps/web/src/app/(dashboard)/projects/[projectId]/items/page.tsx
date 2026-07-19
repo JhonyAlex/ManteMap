@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { DynamicFieldDefinition } from '@mantemap/shared';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -49,10 +50,25 @@ export default async function ItemsPage({
   if (itemTypes.length === 0) {
     return (
       <div>
+        <Link
+          href={`/projects/${projectId}`}
+          className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          &larr; Back to Project
+        </Link>
         <h1 className="text-2xl font-bold tracking-tight">Items</h1>
-        <p className="mt-2 text-muted-foreground">
-          No item types configured for this project. Create an item type first.
-        </p>
+        <div className="mt-6 flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <h3 className="mb-1 text-lg font-semibold">No item types</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            No item types configured for this project. Create an item type first.
+          </p>
+          <Link
+            href={`/projects/${projectId}/item-types`}
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Go to Item Types
+          </Link>
+        </div>
       </div>
     );
   }
@@ -80,6 +96,13 @@ export default async function ItemsPage({
 
   return (
     <div>
+      <Link
+        href={`/projects/${projectId}`}
+        className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        &larr; Back to Project
+      </Link>
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Items</h1>
         <p className="mt-1 text-muted-foreground">

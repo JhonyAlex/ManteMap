@@ -5,6 +5,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createItemTypeSchema, type CreateItemTypeInput, updateItemTypeSchema, type UpdateItemTypeInput } from '@mantemap/validation';
 import { ZodError } from 'zod';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Skeleton,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
+import { Pencil, Trash2, Plus, Package } from 'lucide-react';
 
 interface ItemTypeItem {
   id: string;
@@ -33,23 +48,20 @@ export default function ItemTypesPage({ params }: ItemTypesPageProps) {
 
   const [itemTypes, setItemTypes] = useState<ItemTypeItem[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ItemTypeItem | null>(null);
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editSlug, setEditSlug] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editColor, setEditColor] = useState('');
-  const [editErrors, setEditErrors] = useState<FormErrors>({});
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<ItemTypeItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchItemTypes = useCallback(async () => {
     try {
@@ -81,19 +93,32 @@ export default function ItemTypesPage({ params }: ItemTypesPageProps) {
     }
   }
 
-  function handleEditNameChange(value: string) {
-    setEditName(value);
-    if (!editSlug || editSlug === editName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')) {
-      setEditSlug(
-        value
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9-]/g, '')
-      );
-    }
+  function openCreateDialog() {
+    setEditingItem(null);
+    setName('');
+    setSlug('');
+    setDescription('');
+    setColor('');
+    setErrors({});
+    setDialogOpen(true);
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  function openEditDialog(item: ItemTypeItem) {
+    setEditingItem(item);
+    setName(item.name);
+    setSlug(item.slug);
+    setDescription(item.description ?? '');
+    setColor(item.color ?? '');
+    setErrors({});
+    setDialogOpen(true);
+  }
+
+  function openDeleteDialog(item: ItemTypeItem) {
+    setItemToDelete(item);
+    setDeleteOpen(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
@@ -119,22 +144,25 @@ export default function ItemTypesPage({ params }: ItemTypesPageProps) {
       return;
     }
 
-    setIsCreating(true);
+    setIsSaving(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/item-types`, {
-        method: 'POST',
+      const isEditing = editingItem !== null;
+      const url = isEditing
+        ? `/api/projects/${projectId}/item-types/${editingItem!.id}`
+        : `/api/projects/${projectId}/item-types`;
+      const method = isEditing ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed),
       });
 
-      if (res.status === 201) {
-        setName('');
-        setSlug('');
-        setDescription('');
-        setColor('');
-        setShowForm(false);
+      if (res.status === 201 || res.ok) {
+        setDialogOpen(false);
         fetchItemTypes();
         router.refresh();
+        toast.success(isEditing ? 'Item type updated.' : 'Item type created.');
         return;
       }
 
@@ -144,113 +172,37 @@ export default function ItemTypesPage({ params }: ItemTypesPageProps) {
         return;
       }
 
-      setErrors({ general: body.message || 'Failed to create item type.' });
+      setErrors({ general: body.message || 'Failed to save item type.' });
     } catch {
       setErrors({ general: 'An unexpected error occurred.' });
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Edit
-  // ---------------------------------------------------------------------------
-
-  function startEditing(item: ItemTypeItem) {
-    setEditingId(item.id);
-    setEditName(item.name);
-    setEditSlug(item.slug);
-    setEditDescription(item.description ?? '');
-    setEditColor(item.color ?? '');
-    setEditErrors({});
-  }
-
-  function cancelEditing() {
-    setEditingId(null);
-    setEditErrors({});
-  }
-
-  async function handleUpdate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingId) return;
-    setEditErrors({});
-
-    let parsed: UpdateItemTypeInput;
+  async function handleDeleteConfirm() {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
     try {
-      parsed = updateItemTypeSchema.parse({
-        name: editName,
-        slug: editSlug,
-        description: editDescription || undefined,
-        color: editColor || undefined,
-      });
-    } catch (err) {
-      if (err instanceof ZodError) {
-        const fieldErrors: FormErrors = {};
-        for (const issue of err.issues) {
-          const field = issue.path[0] as keyof FormErrors;
-          if (field === 'name' || field === 'slug' || field === 'description' || field === 'color') {
-            fieldErrors[field] = issue.message;
-          }
-        }
-        setEditErrors(fieldErrors);
-      }
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/item-types/${editingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
-      });
-
-      if (res.ok) {
-        cancelEditing();
-        fetchItemTypes();
-        router.refresh();
-        return;
-      }
-
-      const body = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        setEditErrors({ slug: body.message || 'An item type with this slug already exists.' });
-        return;
-      }
-      setEditErrors({ general: body.message || 'Failed to update item type.' });
-    } catch {
-      setEditErrors({ general: 'An unexpected error occurred.' });
-    } finally {
-      setIsUpdating(false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Delete
-  // ---------------------------------------------------------------------------
-
-  async function handleDelete(itemTypeId: string) {
-    if (!confirm('Delete this item type? This action cannot be undone.')) return;
-
-    try {
-      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}`, {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (res.ok) {
+        setDeleteOpen(false);
+        setItemToDelete(null);
         fetchItemTypes();
         router.refresh();
+        toast.success('Item type deleted.');
         return;
       }
 
       const body = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        alert(body.message || 'Cannot delete: this type has items.');
-        return;
-      }
-      alert(body.message || 'Failed to delete item type.');
+      toast.error(body.message || 'Failed to delete item type.');
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -263,247 +215,193 @@ export default function ItemTypesPage({ params }: ItemTypesPageProps) {
             Configure the types of items this project manages.
           </p>
         </div>
-        {!showForm && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Add Type
-          </button>
-        )}
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Type
+        </Button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleCreate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">New Item Type</h3>
-
-          {errors.general && (
-            <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-              {errors.general}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div>
-              <label htmlFor="it-name" className="mb-1 block text-sm font-medium">Name</label>
-              <input
-                id="it-name"
-                type="text"
-                required
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                placeholder="e.g. Fire Extinguisher"
-                maxLength={100}
-              />
-              {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="it-slug" className="mb-1 block text-sm font-medium">Slug</label>
-              <input
-                id="it-slug"
-                type="text"
-                required
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                className="w-full rounded-md border px-3 py-2 text-sm font-mono"
-                placeholder="e.g. fire-extinguisher"
-                maxLength={80}
-              />
-              {errors.slug && <p className="mt-1 text-sm text-destructive">{errors.slug}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="it-desc" className="mb-1 block text-sm font-medium">Description <span className="text-muted-foreground">(optional)</span></label>
-              <input
-                id="it-desc"
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                maxLength={500}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="it-color" className="mb-1 block text-sm font-medium">Color <span className="text-muted-foreground">(optional hex)</span></label>
-              <div className="flex gap-2">
-                <input
-                  id="it-color"
-                  type="text"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-24 rounded-md border px-3 py-2 text-sm font-mono"
-                  placeholder="#3B82F6"
-                  maxLength={7}
-                />
-                {color && /^#[0-9a-fA-F]{6}$/.test(color) && (
-                  <span className="h-9 w-9 rounded-md border" style={{ backgroundColor: color }} />
-                )}
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingItem ? 'Edit Item Type' : 'New Item Type'}</DialogTitle>
+            <DialogDescription>
+              {editingItem ? 'Update the item type details.' : 'Create a new item type to categorize items.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {errors.general && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+                {errors.general}
               </div>
-              {errors.color && <p className="mt-1 text-sm text-destructive">{errors.color}</p>}
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="it-name">Name</Label>
+                <Input
+                  id="it-name"
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="e.g. Fire Extinguisher"
+                  maxLength={100}
+                  autoFocus
+                />
+                {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="it-slug">Slug</Label>
+                <Input
+                  id="it-slug"
+                  type="text"
+                  required
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  className="font-mono"
+                  placeholder="e.g. fire-extinguisher"
+                  maxLength={80}
+                />
+                {errors.slug && <p className="mt-1 text-sm text-destructive">{errors.slug}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="it-desc">Description <span className="text-muted-foreground">(optional)</span></Label>
+                <Input
+                  id="it-desc"
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+
+              <div>
+                <Label>Color <span className="text-muted-foreground">(optional)</span></Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={color || '#6B7280'}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="h-9 w-12 cursor-pointer rounded border p-0.5"
+                  />
+                  <Input
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    placeholder="#3B82F6"
+                    className="w-28 font-mono text-sm"
+                    maxLength={7}
+                  />
+                  {color && /^#[0-9a-fA-F]{6}$/.test(color) && (
+                    <span className="h-9 w-9 rounded-md border" style={{ backgroundColor: color }} />
+                  )}
+                </div>
+                {errors.color && <p className="mt-1 text-sm text-destructive">{errors.color}</p>}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isCreating ? 'Creating...' : 'Create'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowForm(false); setErrors({}); }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? 'Saving...' : editingItem ? 'Save Changes' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {itemToDelete?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{itemToDelete?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* List */}
       {isLoadingList ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : itemTypes.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">
-            No item types yet. Add your first item type to start managing items.
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+        </div>
+      ) : itemTypes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <Package className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No item types yet</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            Create your first item type to start managing items.
           </p>
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-1 h-4 w-4" />
+            Create Item Type
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
-          {itemTypes.map((it) =>
-            editingId === it.id ? (
-              // ---- Inline edit form ----
-              <form key={it.id} onSubmit={handleUpdate} noValidate className="rounded-lg border border-primary/40 bg-muted/20 p-3">
-                {editErrors.general && (
-                  <div role="alert" className="mb-2 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-                    {editErrors.general}
-                  </div>
+          {itemTypes.map((it) => (
+            <div key={it.id} className="flex items-center justify-between rounded-lg border p-3">
+              <div className="flex items-center gap-3">
+                {it.color && (
+                  <span className="h-4 w-4 rounded-full border" style={{ backgroundColor: it.color }} />
                 )}
-                <div className="space-y-2">
-                  <div>
-                    <label className="mb-0.5 block text-xs font-medium">Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={editName}
-                      onChange={(e) => handleEditNameChange(e.target.value)}
-                      className="w-full rounded-md border px-2 py-1.5 text-sm"
-                      maxLength={100}
-                    />
-                    {editErrors.name && <p className="mt-0.5 text-xs text-destructive">{editErrors.name}</p>}
-                  </div>
-                  <div>
-                    <label className="mb-0.5 block text-xs font-medium">Slug</label>
-                    <input
-                      type="text"
-                      required
-                      value={editSlug}
-                      onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      className="w-full rounded-md border px-2 py-1.5 text-sm font-mono"
-                      maxLength={80}
-                    />
-                    {editErrors.slug && <p className="mt-0.5 text-xs text-destructive">{editErrors.slug}</p>}
-                  </div>
-                  <div>
-                    <label className="mb-0.5 block text-xs font-medium">Description <span className="text-muted-foreground">(optional)</span></label>
-                    <input
-                      type="text"
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      className="w-full rounded-md border px-2 py-1.5 text-sm"
-                      maxLength={500}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-0.5 block text-xs font-medium">Color <span className="text-muted-foreground">(optional hex)</span></label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={editColor}
-                        onChange={(e) => setEditColor(e.target.value)}
-                        className="w-24 rounded-md border px-2 py-1.5 text-sm font-mono"
-                        placeholder="#3B82F6"
-                        maxLength={7}
-                      />
-                      {editColor && /^#[0-9a-fA-F]{6}$/.test(editColor) && (
-                        <span className="h-8 w-8 rounded-md border" style={{ backgroundColor: editColor }} />
-                      )}
-                    </div>
-                    {editErrors.color && <p className="mt-0.5 text-xs text-destructive">{editErrors.color}</p>}
-                  </div>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={isUpdating}
-                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {isUpdating ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelEditing}
-                    className="rounded-md border px-3 py-1.5 text-xs hover:bg-accent"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              // ---- Display row ----
-              <div key={it.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div className="flex items-center gap-3">
-                  {it.color && (
-                    <span className="h-4 w-4 rounded-full border" style={{ backgroundColor: it.color }} />
-                  )}
-                  <div>
-                    <p className="font-medium">{it.name}</p>
-                    <p className="text-xs text-muted-foreground">{it.slug}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/projects/${projectId}/item-types/${it.id}/fields`}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Fields
-                  </Link>
-                  <Link
-                    href={`/projects/${projectId}/item-types/${it.id}/statuses`}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Statuses
-                  </Link>
-                  <Link
-                    href={`/projects/${projectId}/items?itemTypeId=${it.id}`}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    View Items
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => startEditing(it)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(it.id)}
-                    className="text-xs text-destructive hover:text-destructive/80"
-                  >
-                    Delete
-                  </button>
+                <div>
+                  <p className="font-medium">{it.name}</p>
+                  <p className="text-xs text-muted-foreground">{it.slug}</p>
                 </div>
               </div>
-            )
-          )}
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/projects/${projectId}/item-types/${it.id}/fields`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Fields
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/item-types/${it.id}/statuses`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Statuses
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/items?itemTypeId=${it.id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View Items
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEditDialog(it)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openDeleteDialog(it)}
+                  className="text-destructive hover:text-destructive/80"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

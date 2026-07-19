@@ -5,13 +5,6 @@
  * Displays current status as a Badge with status color.
  * Provides edit and delete actions with confirmation dialog.
  * Shows attached documents with upload capability.
- *
- * Spec: openspec/changes/phase-4-items-ui/specs/items-ui/spec.md
- *   "Item detail page"
- * Spec: openspec/changes/phase-5-documents/specs/document-management/spec.md
- *   "Document CRUD" — list documents on item detail
- * Design: openspec/changes/phase-4-items-ui/design.md
- *   "field value renderer, status badge, actions"
  */
 
 'use client';
@@ -30,6 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@mantemap/ui';
+import { toast } from 'sonner';
 import { renderCellValue } from './cell-renderer';
 import { StatusTransition } from './status-transition';
 import type { StatusOption } from './status-transition';
@@ -49,7 +43,6 @@ export interface ItemDetailProps {
   item: ItemDetailType;
   projectId: string;
   availableStatuses?: StatusOption[];
-  /** Current user ID for inspection logging. */
   userId?: string;
 }
 
@@ -69,6 +62,7 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
     deleteMutation.mutate(undefined, {
       onSuccess: () => {
         router.push(`/projects/${projectId}/items`);
+        toast.success('Item deleted.');
       },
     });
   }, [deleteMutation, router, projectId]);
@@ -100,15 +94,16 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
         const newItemId = body.data?.id;
         if (newItemId) {
           router.push(`/projects/${projectId}/items/${newItemId}`);
+          toast.success('Item duplicated.');
         } else {
-          alert('Item duplicated but could not navigate to it. Please refresh the list.');
+          toast.warning('Item duplicated but could not navigate to it. Please refresh the list.');
         }
       } else {
         const body = await res.json().catch(() => ({}));
-        alert(body.message || 'Failed to duplicate item.');
+        toast.error(body.message || 'Failed to duplicate item.');
       }
     } catch {
-      alert('An unexpected error occurred while duplicating.');
+      toast.error('An unexpected error occurred while duplicating.');
     } finally {
       setIsDuplicating(false);
     }
@@ -154,30 +149,31 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
           >
             Edit
           </Link>
-          <button
+          <Button
+            variant="outline"
             onClick={() => setQrOpen(true)}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             Show QR
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleDuplicate}
             disabled={isDuplicating}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
           >
             {isDuplicating ? 'Duplicating...' : 'Duplicate'}
-          </button>
+          </Button>
           <ExportPDFButton
             projectId={projectId}
             itemId={item.id}
             itemName={item.name}
           />
-          <button
+          <Button
+            variant="outline"
             onClick={() => setDeleteOpen(true)}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-destructive bg-background px-4 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive/10"
+            className="border-destructive text-destructive hover:bg-destructive/10"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -186,7 +182,6 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Fields</h2>
         </div>
-        {/* Location */}
         {item.location && (
           <div className="flex items-start justify-between px-4 py-3 border-b">
             <span className="text-sm font-medium text-muted-foreground">
@@ -290,19 +285,16 @@ export function ItemDetail({ item, projectId, availableStatuses = [], userId }: 
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <button
-              onClick={() => setDeleteOpen(false)}
-              className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="destructive"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
-              className="inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90 disabled:opacity-50"
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

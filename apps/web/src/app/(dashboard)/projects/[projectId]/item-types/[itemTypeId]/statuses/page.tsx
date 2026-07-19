@@ -12,6 +12,21 @@ import {
   type ReorderStatusesInput,
 } from '@mantemap/validation';
 import { ZodError } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Checkbox,
+  Skeleton,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
+import { Pencil, Trash2, GripVertical, Plus, GitBranch } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,20 +88,21 @@ export default function StatusesPage({ params }: StatusesPageProps) {
   const [itemType, setItemType] = useState<ItemTypeInfo | null>(null);
   const [statuses, setStatuses] = useState<StatusItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
 
-  // Form state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [color, setColor] = useState(STATUS_COLORS[0]!);
   const [description, setDescription] = useState('');
   const [isDefault, setIsDefault] = useState(false);
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [statusToDelete, setStatusToDelete] = useState<StatusItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -143,7 +159,7 @@ export default function StatusesPage({ params }: StatusesPageProps) {
   // Create / Update
   // ---------------------------------------------------------------------------
 
-  async function handleCreateOrUpdate(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
@@ -183,8 +199,10 @@ export default function StatusesPage({ params }: StatusesPageProps) {
 
         if (res.ok) {
           resetForm();
+          setDialogOpen(false);
           fetchStatuses();
           router.refresh();
+          toast.success('Status updated.');
           return;
         }
 
@@ -233,8 +251,10 @@ export default function StatusesPage({ params }: StatusesPageProps) {
 
         if (res.status === 201) {
           resetForm();
+          setDialogOpen(false);
           fetchStatuses();
           router.refresh();
+          toast.success('Status created.');
           return;
         }
 
@@ -258,52 +278,58 @@ export default function StatusesPage({ params }: StatusesPageProps) {
     setColor(STATUS_COLORS[0]!);
     setDescription('');
     setIsDefault(false);
-    setShowForm(false);
     setEditingId(null);
     setErrors({});
   }
 
-  function startEditing(status: StatusItem) {
+  function openCreateDialog() {
+    resetForm();
+    setDialogOpen(true);
+  }
+
+  function openEditDialog(status: StatusItem) {
     setEditingId(status.id);
     setName(status.name);
     setKey(status.key);
     setColor(status.color);
     setDescription(status.description ?? '');
     setIsDefault(status.isDefault);
-    setShowForm(true);
     setErrors({});
+    setDialogOpen(true);
   }
 
-  function cancelForm() {
-    resetForm();
+  function openDeleteDialog(status: StatusItem) {
+    setStatusToDelete(status);
+    setDeleteOpen(true);
   }
 
   // ---------------------------------------------------------------------------
   // Delete
   // ---------------------------------------------------------------------------
 
-  async function handleDelete(statusId: string) {
-    if (!confirm('Delete this status? This action cannot be undone.')) return;
-
+  async function handleDeleteConfirm() {
+    if (!statusToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses/${statusId}`, {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/statuses/${statusToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (res.ok) {
+        setDeleteOpen(false);
+        setStatusToDelete(null);
         fetchStatuses();
         router.refresh();
+        toast.success('Status deleted.');
         return;
       }
 
       const body = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        alert(body.message || 'Cannot delete: this status has items.');
-        return;
-      }
-      alert(body.message || 'Failed to delete status.');
+      toast.error(body.message || 'Failed to delete status.');
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -322,32 +348,30 @@ export default function StatusesPage({ params }: StatusesPageProps) {
       if (res.ok) {
         fetchStatuses();
         router.refresh();
+        toast.success('Default status updated.');
         return;
       }
 
       const body = await res.json().catch(() => ({}));
-      alert(body.message || 'Failed to set as default.');
+      toast.error(body.message || 'Failed to set as default.');
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Reorder
+  // Reorder via drag & drop
   // ---------------------------------------------------------------------------
 
-  async function handleMoveUp(sorted: StatusItem[], index: number) {
-    if (index <= 0) return;
+  function handleDragReorder(draggedId: string, targetId: string) {
+    const sorted = [...statuses].sort((a, b) => a.order - b.order);
+    const draggedIdx = sorted.findIndex((s) => s.id === draggedId);
+    const targetIdx = sorted.findIndex((s) => s.id === targetId);
+    if (draggedIdx < 0 || targetIdx < 0 || draggedIdx === targetIdx) return;
     const newSorted = [...sorted];
-    [newSorted[index - 1], newSorted[index]] = [newSorted[index]!, newSorted[index - 1]!];
-    await submitReorder(newSorted.map((s) => s.id));
-  }
-
-  async function handleMoveDown(sorted: StatusItem[], index: number) {
-    if (index >= sorted.length - 1) return;
-    const newSorted = [...sorted];
-    [newSorted[index], newSorted[index + 1]] = [newSorted[index + 1]!, newSorted[index]!];
-    await submitReorder(newSorted.map((s) => s.id));
+    const [moved] = newSorted.splice(draggedIdx, 1);
+    newSorted.splice(targetIdx, 0, moved!);
+    submitReorder(newSorted.map((s) => s.id));
   }
 
   async function submitReorder(statusIds: string[]) {
@@ -355,7 +379,7 @@ export default function StatusesPage({ params }: StatusesPageProps) {
     try {
       parsed = reorderStatusesSchema.parse({ statusIds });
     } catch {
-      alert('Invalid reorder data.');
+      toast.error('Invalid reorder data.');
       return;
     }
 
@@ -369,12 +393,13 @@ export default function StatusesPage({ params }: StatusesPageProps) {
       if (res.ok) {
         fetchStatuses();
         router.refresh();
+        toast.success('Statuses reordered.');
       } else {
         const body = await res.json().catch(() => ({}));
-        alert(body.message || 'Failed to reorder statuses.');
+        toast.error(body.message || 'Failed to reorder statuses.');
       }
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     }
   }
 
@@ -403,54 +428,52 @@ export default function StatusesPage({ params }: StatusesPageProps) {
             Configure the workflow states for this item type.
           </p>
         </div>
-        {!showForm && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Add Status
-          </button>
-        )}
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Status
+        </Button>
       </div>
 
-      {/* Create / Edit form */}
-      {showForm && (
-        <form onSubmit={handleCreateOrUpdate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">{editingId ? 'Edit Status' : 'New Status'}</h3>
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Status' : 'New Status'}</DialogTitle>
+            <DialogDescription>
+              {editingId ? 'Update the status details.' : 'Create a new workflow status.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {errors.general && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+                {errors.general}
+              </div>
+            )}
 
-          {errors.general && (
-            <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-              {errors.general}
-            </div>
-          )}
-
-          <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="st-name" className="mb-1 block text-sm font-medium">Name</label>
-                <input
+                <Label htmlFor="st-name">Name</Label>
+                <Input
                   id="st-name"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
                   placeholder="e.g. In Progress"
                   maxLength={100}
+                  autoFocus
                 />
                 {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
               </div>
-
               <div>
-                <label htmlFor="st-key" className="mb-1 block text-sm font-medium">Key</label>
-                <input
+                <Label htmlFor="st-key">Key</Label>
+                <Input
                   id="st-key"
                   type="text"
                   required
                   value={key}
                   onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+                  className="font-mono"
                   placeholder="e.g. in-progress"
                   maxLength={100}
                 />
@@ -460,7 +483,24 @@ export default function StatusesPage({ params }: StatusesPageProps) {
 
             {/* Color picker */}
             <div>
-              <label className="mb-1 block text-sm font-medium">Color</label>
+              <Label>Color</Label>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="h-9 w-12 cursor-pointer rounded border p-0.5"
+                />
+                <Input
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-28 font-mono text-sm"
+                  maxLength={7}
+                />
+                {color && /^#[0-9a-fA-F]{6}$/.test(color) && (
+                  <span className="h-9 w-9 rounded-md border" style={{ backgroundColor: color }} />
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {STATUS_COLORS.map((c) => (
                   <button
@@ -479,70 +519,92 @@ export default function StatusesPage({ params }: StatusesPageProps) {
             </div>
 
             <div>
-              <label htmlFor="st-desc" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="st-desc">
                 Description <span className="text-muted-foreground">(optional)</span>
-              </label>
-              <input
+              </Label>
+              <Input
                 id="st-desc"
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 maxLength={500}
               />
             </div>
 
             <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={isDefault}
-                onChange={(e) => setIsDefault(e.target.checked)}
-                className="rounded"
+                onCheckedChange={(checked) => setIsDefault(checked === true)}
               />
               Set as default status
             </label>
-          </div>
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Saving...' : editingId ? 'Update Status' : 'Create Status'}
-            </button>
-            <button
-              type="button"
-              onClick={cancelForm}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : editingId ? 'Update Status' : 'Create Status'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {statusToDelete?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{statusToDelete?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Statuses list */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : statuses.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="mb-3 text-muted-foreground">
-            No statuses configured yet. Add your first status to define the workflow for this item type.
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+        </div>
+      ) : statuses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <GitBranch className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No statuses yet</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            Add your first status to define the workflow for this item type.
           </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-1 h-4 w-4" />
             Add First Status
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
-          {sorted.map((status, index) => (
-            <div key={status.id} className="flex items-center justify-between rounded-lg border p-3">
+          {sorted.map((status) => (
+            <div
+              key={status.id}
+              draggable
+              onDragStart={(e) => { e.dataTransfer.setData('text/plain', status.id); }}
+              onDragOver={(e) => { e.preventDefault(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const draggedId = e.dataTransfer.getData('text/plain');
+                handleDragReorder(draggedId, status.id);
+              }}
+              className="flex cursor-grab items-center justify-between rounded-lg border p-3 active:cursor-grabbing"
+            >
               <div className="flex items-center gap-3">
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
                 <span
                   className="h-5 w-5 flex-shrink-0 rounded-full border"
                   style={{ backgroundColor: status.color }}
@@ -565,49 +627,31 @@ export default function StatusesPage({ params }: StatusesPageProps) {
                     {status.description}
                   </p>
                 )}
-                <div className="flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => handleMoveUp(sorted, index)}
-                    disabled={index === 0}
-                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Move up"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMoveDown(sorted, index)}
-                    disabled={index === sorted.length - 1}
-                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Move down"
-                  >
-                    ▼
-                  </button>
-                </div>
                 {!status.isDefault && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleSetDefault(status.id)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
+                    className="text-xs"
                   >
                     Set Default
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => startEditing(status)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEditDialog(status)}
                 >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(status.id)}
-                  className="text-xs text-destructive hover:text-destructive/80"
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openDeleteDialog(status)}
+                  className="text-destructive hover:text-destructive/80"
                 >
-                  Delete
-                </button>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           ))}

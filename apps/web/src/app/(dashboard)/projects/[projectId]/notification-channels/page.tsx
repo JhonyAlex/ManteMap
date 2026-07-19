@@ -5,16 +5,6 @@
  *
  * List, configure, test, and delete external notification channel configs
  * (Slack, Microsoft Teams, Telegram) scoped to the authenticated user.
- *
- * APIs:
- *   GET    /api/projects/[projectId]/notification-channels
- *   PUT    /api/projects/[projectId]/notification-channels
- *   DELETE /api/projects/[projectId]/notification-channels?type={channelType}
- *   POST   /api/projects/[projectId]/notification-channels/test
- *
- * Spec: openspec/changes/phase-10-external-notifications/specs/channel-configuration/spec.md
- *   "Channel Config CRUD API" — GET/PUT/DELETE notification-channels
- *   "Test Connectivity Endpoint" — POST test
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -30,7 +20,22 @@ import {
   teamsConfigSchema,
   telegramConfigSchema,
 } from '@mantemap/validation';
-import { Button, Input, Label, Badge, Card, CardContent } from '@mantemap/ui';
+import {
+  Button,
+  Input,
+  Label,
+  Badge,
+  Card,
+  CardContent,
+  Skeleton,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
 import type { ZodObject } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -112,7 +117,6 @@ function getConfigSchema(channelType: string): ZodObject<any> | null {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Partially mask a config value for display. */
 function maskValue(value: string): string {
   if (!value) return '—';
   if (value.length <= 8) return value.slice(0, 2) + '••••' + value.slice(-2);
@@ -145,33 +149,30 @@ export default function NotificationChannelsPage({ params }: PageProps) {
 
   // ---- Local state ---------------------------------------------------------
 
-  /** Which channel's form is currently expanded (null = none). */
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  /** Per-channel form field values keyed by channelType → fieldName → value. */
   const [formValues, setFormValues] = useState<
     Record<string, Record<string, string>>
   >({});
 
-  /** Per-channel field-level validation errors. */
   const [formErrors, setFormErrors] = useState<
     Record<string, Record<string, string>>
   >({});
 
-  /** Per-channel saving indicator. */
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
-  /** Per-channel test result. */
   const [testStatus, setTestStatus] = useState<
     Record<string, { success: boolean; error?: string } | null>
   >({});
 
-  /** Per-channel testing indicator. */
   const [testing, setTesting] = useState<Record<string, boolean>>({});
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ---- Derived data --------------------------------------------------------
 
-  /** channelType → config lookup. */
   const configMap = useMemo(() => {
     const map: Record<string, any> = {};
     if (configs) {
@@ -184,7 +185,6 @@ export default function NotificationChannelsPage({ params }: PageProps) {
 
   // ---- Handlers ------------------------------------------------------------
 
-  /** Update a single form field value and clear its error. */
   const handleInputChange = useCallback(
     (channelType: string, fieldName: string, value: string) => {
       setFormValues((prev) => ({
@@ -201,12 +201,10 @@ export default function NotificationChannelsPage({ params }: PageProps) {
     [],
   );
 
-  /** Expand/collapse the form for a channel. Pre-populates fields if expanding. */
   const toggleExpand = useCallback(
     (channelType: string) => {
       setExpanded((prev) => {
         if (prev === channelType) {
-          // Collapse — clear form state
           setFormValues((fv) => {
             const next = { ...fv };
             delete next[channelType];
@@ -220,7 +218,6 @@ export default function NotificationChannelsPage({ params }: PageProps) {
           return null;
         }
 
-        // Expand — pre-populate if there's an existing config
         const existing = configMap[channelType];
         if (existing?.config) {
           const def = CHANNELS.find((c) => c.type === channelType);
@@ -238,7 +235,6 @@ export default function NotificationChannelsPage({ params }: PageProps) {
     [configMap],
   );
 
-  /** Validate and save a channel config. */
   const handleSave = useCallback(
     async (channelType: string) => {
       const schema = getConfigSchema(channelType);
@@ -275,6 +271,7 @@ export default function NotificationChannelsPage({ params }: PageProps) {
           delete next[channelType];
           return next;
         });
+        toast.success('Configuration saved.');
       } catch (err: unknown) {
         const msg =
           err instanceof Error ? err.message : 'Failed to save configuration';
@@ -282,6 +279,7 @@ export default function NotificationChannelsPage({ params }: PageProps) {
           ...prev,
           [channelType]: { general: msg },
         }));
+        toast.error(msg);
       } finally {
         setSaving((prev) => ({ ...prev, [channelType]: false }));
       }
@@ -289,24 +287,31 @@ export default function NotificationChannelsPage({ params }: PageProps) {
     [formValues, upsertMut],
   );
 
-  /** Delete a channel config after confirmation. */
   const handleDelete = useCallback(
     async (channelType: string) => {
-      const label =
-        CHANNELS.find((c) => c.type === channelType)?.label ?? channelType;
-      if (!window.confirm(`Remove ${label} channel configuration? This cannot be undone.`)) {
-        return;
-      }
-      try {
-        await deleteMut.mutateAsync(channelType);
-      } catch {
-        // Error will be surfaced by the hook or global error boundary
-      }
+      const label = CHANNELS.find((c) => c.type === channelType)?.label ?? channelType;
+      setChannelToDelete(channelType);
+      setDeleteOpen(true);
     },
-    [deleteMut],
+    [],
   );
 
-  /** Send a test message through the configured channel. */
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!channelToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteMut.mutateAsync(channelToDelete);
+      setDeleteOpen(false);
+      setChannelToDelete(null);
+      toast.success('Channel removed.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to remove channel.';
+      toast.error(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [channelToDelete, deleteMut]);
+
   const handleTest = useCallback(
     async (channelType: string) => {
       setTesting((prev) => ({ ...prev, [channelType]: true }));
@@ -318,6 +323,11 @@ export default function NotificationChannelsPage({ params }: PageProps) {
       try {
         const result = await testMut.mutateAsync(channelType);
         setTestStatus((prev) => ({ ...prev, [channelType]: result }));
+        if (result.success) {
+          toast.success('Test successful.');
+        } else {
+          toast.error('Test failed.');
+        }
       } catch (err: unknown) {
         const msg =
           err instanceof Error ? err.message : 'Test failed';
@@ -325,6 +335,7 @@ export default function NotificationChannelsPage({ params }: PageProps) {
           ...prev,
           [channelType]: { success: false, error: msg },
         }));
+        toast.error(msg);
       } finally {
         setTesting((prev) => ({ ...prev, [channelType]: false }));
       }
@@ -332,7 +343,6 @@ export default function NotificationChannelsPage({ params }: PageProps) {
     [testMut],
   );
 
-  /** Dismiss a test result alert. */
   const dismissTest = useCallback((channelType: string) => {
     setTestStatus((prev) => {
       const next = { ...prev };
@@ -358,9 +368,9 @@ export default function NotificationChannelsPage({ params }: PageProps) {
           {CHANNELS.map((ch) => (
             <Card key={ch.type}>
               <CardContent className="p-4">
-                <div className="space-y-3 animate-pulse">
-                  <div className="h-5 w-32 rounded bg-muted" />
-                  <div className="h-4 w-64 rounded bg-muted" />
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-64" />
                 </div>
               </CardContent>
             </Card>
@@ -390,6 +400,10 @@ export default function NotificationChannelsPage({ params }: PageProps) {
 
   // ---- Render: normal ------------------------------------------------------
 
+  const channelLabel = channelToDelete
+    ? CHANNELS.find((c) => c.type === channelToDelete)?.label ?? channelToDelete
+    : '';
+
   return (
     <div className="max-w-2xl">
       {/* Back link */}
@@ -409,6 +423,24 @@ export default function NotificationChannelsPage({ params }: PageProps) {
           Telegram) for your account in this project.
         </p>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove {channelLabel} Channel</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove the <strong>{channelLabel}</strong> channel configuration? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Removing...' : 'Remove'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-4">
         {CHANNELS.map((channel) => {
@@ -501,7 +533,6 @@ export default function NotificationChannelsPage({ params }: PageProps) {
                 {/* ---- Expanded form ---- */}
                 {isExpanded && (
                   <div className="mt-4 space-y-4 border-t pt-4">
-                    {/* Show current masked values when editing existing */}
                     {isConfigured && (
                       <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
                         <p className="text-xs font-medium text-muted-foreground">
@@ -521,14 +552,12 @@ export default function NotificationChannelsPage({ params }: PageProps) {
                       </div>
                     )}
 
-                    {/* General save error */}
                     {errors.general && (
                       <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                         {errors.general}
                       </div>
                     )}
 
-                    {/* Form fields */}
                     {channel.fields.map((field) => {
                       const currentValues = formValues[channel.type] ?? {};
                       const value =
@@ -564,7 +593,6 @@ export default function NotificationChannelsPage({ params }: PageProps) {
                       );
                     })}
 
-                    {/* Save / Cancel */}
                     <div className="flex gap-2">
                       <Button
                         onClick={() => handleSave(channel.type)}
@@ -605,13 +633,13 @@ export default function NotificationChannelsPage({ params }: PageProps) {
                           </p>
                         )}
                       </div>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => dismissTest(channel.type)}
-                        className="shrink-0 text-xs underline decoration-muted-foreground/50 hover:decoration-muted-foreground"
                       >
                         Dismiss
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}

@@ -14,6 +14,26 @@ import {
   type DynamicFieldType,
 } from '@mantemap/validation';
 import { ZodError } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+  Checkbox,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+  Skeleton,
+} from '@mantemap/ui';
+import { toast } from 'sonner';
+import { Pencil, Trash2, Copy, GripVertical, Plus, Columns3 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,16 +109,9 @@ const FIELD_TYPES: { value: DynamicFieldType; label: string }[] = [
   { value: 'USER_RELATION', label: 'User Relation' },
 ];
 
-/** Types that require options */
 const OPTIONS_REQUIRED_TYPES = new Set<DynamicFieldType>(['SELECT', 'MULTI_SELECT']);
-
-/** Types that support numeric validation (min, max) */
 const NUMERIC_TYPES = new Set<DynamicFieldType>(['NUMBER', 'DECIMAL', 'CURRENCY']);
-
-/** Types that support text validation (minLength, maxLength, pattern) */
 const TEXT_TYPES = new Set<DynamicFieldType>(['SHORT_TEXT', 'LONG_TEXT']);
-
-/** Types that support date validation (minDate, maxDate) */
 const DATE_TYPES = new Set<DynamicFieldType>(['DATE', 'DATETIME']);
 
 // ---------------------------------------------------------------------------
@@ -172,9 +185,10 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
   const [itemType, setItemType] = useState<ItemTypeInfo | null>(null);
   const [fields, setFields] = useState<DynamicFieldItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
 
-  // Form state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [type, setType] = useState<DynamicFieldType>('SHORT_TEXT');
@@ -185,11 +199,7 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
   const [helpText, setHelpText] = useState('');
   const [unit, setUnit] = useState('');
   const [order, setOrder] = useState('0');
-
-  // Options (SELECT / MULTI_SELECT)
   const [options, setOptions] = useState<FieldOption[]>([{ label: '', value: '' }]);
-
-  // Validation fields
   const [valMin, setValMin] = useState('');
   const [valMax, setValMax] = useState('');
   const [valMinLength, setValMinLength] = useState('');
@@ -197,12 +207,12 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
   const [valPattern, setValPattern] = useState('');
   const [valMinDate, setValMinDate] = useState('');
   const [valMaxDate, setValMaxDate] = useState('');
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Edit state
-  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [fieldToDelete, setFieldToDelete] = useState<DynamicFieldItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -292,12 +302,12 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
     setEditingFieldId(null);
   }
 
-  function cancelForm() {
-    setShowForm(false);
+  function openCreateDialog() {
     resetForm();
+    setDialogOpen(true);
   }
 
-  function startEditing(field: DynamicFieldItem) {
+  function openEditDialog(field: DynamicFieldItem) {
     setEditingFieldId(field.id);
     setName(field.name);
     setKey(field.key);
@@ -320,15 +330,20 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
     setValMinDate(v.valMinDate);
     setValMaxDate(v.valMaxDate);
 
-    setShowForm(true);
     setErrors({});
+    setDialogOpen(true);
+  }
+
+  function openDeleteDialog(field: DynamicFieldItem) {
+    setFieldToDelete(field);
+    setDeleteOpen(true);
   }
 
   // ---------------------------------------------------------------------------
   // Submit (create or update)
   // ---------------------------------------------------------------------------
 
-  async function handleCreateOrUpdate(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
@@ -342,23 +357,23 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
       valMin, valMax, valMinLength, valMaxLength, valPattern, valMinDate, valMaxDate,
     });
 
-    if (isEditing) {
-      const payload = {
-        name,
-        key,
-        type,
-        description: description || undefined,
-        required,
-        order: Number(order) || 0,
-        visible: true,
-        options: fieldOptions?.length ? fieldOptions : undefined,
-        unit: unit || undefined,
-        validation,
-        showInList,
-        showInSearch,
-        helpText: helpText || undefined,
-      };
+    const payload = {
+      name,
+      key,
+      type,
+      description: description || undefined,
+      required,
+      order: Number(order) || 0,
+      visible: true,
+      options: fieldOptions?.length ? fieldOptions : undefined,
+      unit: unit || undefined,
+      validation,
+      showInList,
+      showInSearch,
+      helpText: helpText || undefined,
+    };
 
+    if (isEditing) {
       let parsed: UpdateDynamicFieldInput;
       try {
         parsed = updateDynamicFieldSchema.parse(payload);
@@ -386,9 +401,10 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
 
         if (res.ok) {
           resetForm();
-          setShowForm(false);
+          setDialogOpen(false);
           fetchFields();
           router.refresh();
+          toast.success('Field updated.');
           return;
         }
 
@@ -404,22 +420,6 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
         setIsSubmitting(false);
       }
     } else {
-      const payload = {
-        name,
-        key,
-        type,
-        description: description || undefined,
-        required,
-        order: Number(order) || 0,
-        visible: true,
-        options: fieldOptions?.length ? fieldOptions : undefined,
-        unit: unit || undefined,
-        validation,
-        showInList,
-        showInSearch,
-        helpText: helpText || undefined,
-      };
-
       let parsed: CreateDynamicFieldInput;
       try {
         parsed = createDynamicFieldSchema.parse(payload);
@@ -447,9 +447,10 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
 
         if (res.status === 201) {
           resetForm();
-          setShowForm(false);
+          setDialogOpen(false);
           fetchFields();
           router.refresh();
+          toast.success('Field created.');
           return;
         }
 
@@ -471,28 +472,29 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
   // Delete
   // ---------------------------------------------------------------------------
 
-  async function handleDelete(fieldId: string) {
-    if (!confirm('Delete this field? This action cannot be undone.')) return;
-
+  async function handleDeleteConfirm() {
+    if (!fieldToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields/${fieldId}`, {
+      const res = await fetch(`/api/projects/${projectId}/item-types/${itemTypeId}/fields/${fieldToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (res.ok) {
+        setDeleteOpen(false);
+        setFieldToDelete(null);
         fetchFields();
         router.refresh();
+        toast.success('Field deleted.');
         return;
       }
 
       const body = await res.json().catch(() => ({}));
-      if (res.status === 409) {
-        alert(body.message || 'Cannot delete: this field has values.');
-        return;
-      }
-      alert(body.message || 'Failed to delete field.');
+      toast.error(body.message || 'Failed to delete field.');
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -524,7 +526,7 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
     try {
       parsed = createDynamicFieldSchema.parse(payload);
     } catch {
-      alert('Failed to validate duplicate field.');
+      toast.error('Failed to validate duplicate field.');
       return;
     }
 
@@ -538,32 +540,30 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
       if (res.status === 201) {
         fetchFields();
         router.refresh();
+        toast.success('Field duplicated.');
         return;
       }
 
       const body = await res.json().catch(() => ({}));
-      alert(body.message || 'Failed to duplicate field.');
+      toast.error(body.message || 'Failed to duplicate field.');
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Reorder
+  // Reorder via drag & drop
   // ---------------------------------------------------------------------------
 
-  async function handleMoveUp(sorted: DynamicFieldItem[], index: number) {
-    if (index <= 0) return;
+  function handleDragReorder(draggedId: string, targetId: string) {
+    const sorted = [...fields].sort((a, b) => a.order - b.order);
+    const draggedIdx = sorted.findIndex((f) => f.id === draggedId);
+    const targetIdx = sorted.findIndex((f) => f.id === targetId);
+    if (draggedIdx < 0 || targetIdx < 0 || draggedIdx === targetIdx) return;
     const newSorted = [...sorted];
-    [newSorted[index - 1], newSorted[index]] = [newSorted[index]!, newSorted[index - 1]!];
-    await submitReorder(newSorted.map((f) => f.id));
-  }
-
-  async function handleMoveDown(sorted: DynamicFieldItem[], index: number) {
-    if (index >= sorted.length - 1) return;
-    const newSorted = [...sorted];
-    [newSorted[index], newSorted[index + 1]] = [newSorted[index + 1]!, newSorted[index]!];
-    await submitReorder(newSorted.map((f) => f.id));
+    const [moved] = newSorted.splice(draggedIdx, 1);
+    newSorted.splice(targetIdx, 0, moved!);
+    submitReorder(newSorted.map((f) => f.id));
   }
 
   async function submitReorder(fieldIds: string[]) {
@@ -571,7 +571,7 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
     try {
       parsed = reorderFieldsSchema.parse({ fieldIds });
     } catch {
-      alert('Invalid reorder data.');
+      toast.error('Invalid reorder data.');
       return;
     }
 
@@ -585,12 +585,13 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
       if (res.ok) {
         fetchFields();
         router.refresh();
+        toast.success('Fields reordered.');
       } else {
         const body = await res.json().catch(() => ({}));
-        alert(body.message || 'Failed to reorder fields.');
+        toast.error(body.message || 'Failed to reorder fields.');
       }
     } catch {
-      alert('An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     }
   }
 
@@ -621,55 +622,53 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
             Configure custom fields for this item type.
           </p>
         </div>
-        {!showForm && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Add Field
-          </button>
-        )}
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Field
+        </Button>
       </div>
 
-      {/* Create / Edit form */}
-      {showForm && (
-        <form onSubmit={handleCreateOrUpdate} noValidate className="mb-8 rounded-lg border p-4">
-          <h3 className="mb-3 font-semibold">{editingFieldId ? 'Edit Field' : 'New Field'}</h3>
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingFieldId ? 'Edit Field' : 'New Field'}</DialogTitle>
+            <DialogDescription>
+              {editingFieldId ? 'Update the field settings.' : 'Add a new dynamic field to this item type.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {errors.general && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+                {errors.general}
+              </div>
+            )}
 
-          {errors.general && (
-            <div role="alert" className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-              {errors.general}
-            </div>
-          )}
-
-          <div className="space-y-4">
             {/* Name + Key row */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="df-name" className="mb-1 block text-sm font-medium">Name</label>
-                <input
+                <Label htmlFor="df-name">Name</Label>
+                <Input
                   id="df-name"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => handleNameChange(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
                   placeholder="e.g. Serial Number"
                   maxLength={100}
+                  autoFocus
                 />
                 {errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
               </div>
-
               <div>
-                <label htmlFor="df-key" className="mb-1 block text-sm font-medium">Key</label>
-                <input
+                <Label htmlFor="df-key">Key</Label>
+                <Input
                   id="df-key"
                   type="text"
                   required
                   value={key}
                   onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+                  className="font-mono"
                   placeholder="e.g. serial-number"
                   maxLength={100}
                 />
@@ -679,31 +678,30 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
 
             {/* Type selector */}
             <div>
-              <label htmlFor="df-type" className="mb-1 block text-sm font-medium">Type</label>
-              <select
-                id="df-type"
-                value={type}
-                onChange={(e) => setType(e.target.value as DynamicFieldType)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-              >
-                {FIELD_TYPES.map((ft) => (
-                  <option key={ft.value} value={ft.value}>{ft.label}</option>
-                ))}
-              </select>
+              <Label htmlFor="df-type">Type</Label>
+              <Select value={type} onValueChange={(v) => setType(v as DynamicFieldType)}>
+                <SelectTrigger id="df-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FIELD_TYPES.map((ft) => (
+                    <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors.type && <p className="mt-1 text-sm text-destructive">{errors.type}</p>}
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="df-desc" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="df-desc">
                 Description <span className="text-muted-foreground">(optional)</span>
-              </label>
-              <input
+              </Label>
+              <Input
                 id="df-desc"
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 maxLength={500}
               />
             </div>
@@ -713,49 +711,56 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
               <div className="rounded-md border p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <h4 className="text-sm font-medium">Options</h4>
-                  <button
-                    type="button"
-                    onClick={handleAddOption}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    + Add Option
-                  </button>
+                  <Button type="button" variant="ghost" size="sm" onClick={handleAddOption}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add Option
+                  </Button>
                 </div>
                 {errors.options && <p className="mb-2 text-sm text-destructive">{errors.options}</p>}
                 <div className="space-y-2">
                   {options.map((opt, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <input
+                      <Input
                         type="text"
                         value={opt.label}
                         onChange={(e) => handleOptionChange(index, 'label', e.target.value)}
-                        className="flex-1 rounded-md border px-2 py-1.5 text-sm"
+                        className="flex-1"
                         placeholder="Label"
                       />
-                      <input
+                      <Input
                         type="text"
                         value={opt.value}
                         onChange={(e) => handleOptionChange(index, 'value', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                        className="flex-1 rounded-md border px-2 py-1.5 text-sm font-mono"
+                        className="flex-1 font-mono"
                         placeholder="value"
                       />
-                      <input
-                        type="text"
-                        value={opt.color ?? ''}
-                        onChange={(e) => handleOptionChange(index, 'color', e.target.value)}
-                        className="w-20 rounded-md border px-2 py-1.5 text-sm"
-                        placeholder="#hex"
-                        maxLength={7}
-                      />
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="color"
+                          value={opt.color || '#6B7280'}
+                          onChange={(e) => handleOptionChange(index, 'color', e.target.value)}
+                          className="h-9 w-9 cursor-pointer rounded border p-0.5"
+                        />
+                        <Input
+                          type="text"
+                          value={opt.color ?? ''}
+                          onChange={(e) => handleOptionChange(index, 'color', e.target.value)}
+                          className="w-20 font-mono text-xs"
+                          placeholder="#hex"
+                          maxLength={7}
+                        />
+                      </div>
                       {options.length > 1 && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleRemoveOption(index)}
-                          className="rounded p-1 text-muted-foreground hover:text-destructive"
+                          className="text-muted-foreground hover:text-destructive"
                           aria-label="Remove option"
                         >
-                          ✕
-                        </button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                   ))}
@@ -772,22 +777,20 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
                 {NUMERIC_TYPES.has(type) && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Min</label>
-                      <input
+                      <Label className="text-xs text-muted-foreground">Min</Label>
+                      <Input
                         type="number"
                         value={valMin}
                         onChange={(e) => setValMin(e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Max</label>
-                      <input
+                      <Label className="text-xs text-muted-foreground">Max</Label>
+                      <Input
                         type="number"
                         value={valMax}
                         onChange={(e) => setValMax(e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm"
                         placeholder="999"
                       />
                     </div>
@@ -798,33 +801,31 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">Min Length</label>
-                        <input
+                        <Label className="text-xs text-muted-foreground">Min Length</Label>
+                        <Input
                           type="number"
                           value={valMinLength}
                           onChange={(e) => setValMinLength(e.target.value)}
-                          className="w-full rounded-md border px-2 py-1.5 text-sm"
                           placeholder="0"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">Max Length</label>
-                        <input
+                        <Label className="text-xs text-muted-foreground">Max Length</Label>
+                        <Input
                           type="number"
                           value={valMaxLength}
                           onChange={(e) => setValMaxLength(e.target.value)}
-                          className="w-full rounded-md border px-2 py-1.5 text-sm"
                           placeholder="255"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Regex Pattern</label>
-                      <input
+                      <Label className="text-xs text-muted-foreground">Regex Pattern</Label>
+                      <Input
                         type="text"
                         value={valPattern}
                         onChange={(e) => setValPattern(e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm font-mono"
+                        className="font-mono"
                         placeholder="e.g. ^[A-Z]{3}-\d{4}$"
                       />
                     </div>
@@ -834,21 +835,19 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
                 {DATE_TYPES.has(type) && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Min Date</label>
-                      <input
+                      <Label className="text-xs text-muted-foreground">Min Date</Label>
+                      <Input
                         type="date"
                         value={valMinDate}
                         onChange={(e) => setValMinDate(e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Max Date</label>
-                      <input
+                      <Label className="text-xs text-muted-foreground">Max Date</Label>
+                      <Input
                         type="date"
                         value={valMaxDate}
                         onChange={(e) => setValMaxDate(e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm"
                       />
                     </div>
                   </div>
@@ -859,28 +858,25 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
             {/* Additional settings */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="df-unit" className="mb-1 block text-sm font-medium">
+                <Label htmlFor="df-unit">
                   Unit <span className="text-muted-foreground">(optional)</span>
-                </label>
-                <input
+                </Label>
+                <Input
                   id="df-unit"
                   type="text"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
                   placeholder="e.g. kg, m², psi"
                   maxLength={50}
                 />
               </div>
-
               <div>
-                <label htmlFor="df-order" className="mb-1 block text-sm font-medium">Order</label>
-                <input
+                <Label htmlFor="df-order">Order</Label>
+                <Input
                   id="df-order"
                   type="number"
                   value={order}
                   onChange={(e) => setOrder(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm"
                   min={0}
                 />
               </div>
@@ -888,15 +884,14 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
 
             {/* Help text */}
             <div>
-              <label htmlFor="df-help" className="mb-1 block text-sm font-medium">
+              <Label htmlFor="df-help">
                 Help Text <span className="text-muted-foreground">(optional)</span>
-              </label>
-              <input
+              </Label>
+              <Input
                 id="df-help"
                 type="text"
                 value={helpText}
                 onChange={(e) => setHelpText(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
                 placeholder="Brief helper text shown below the field"
                 maxLength={500}
               />
@@ -905,76 +900,94 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
             {/* Checkboxes */}
             <div className="flex flex-wrap gap-6">
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={required}
-                  onChange={(e) => setRequired(e.target.checked)}
-                  className="rounded"
+                  onCheckedChange={(checked) => setRequired(checked === true)}
                 />
                 Required
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={showInList}
-                  onChange={(e) => setShowInList(e.target.checked)}
-                  className="rounded"
+                  onCheckedChange={(checked) => setShowInList(checked === true)}
                 />
                 Show in list
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={showInSearch}
-                  onChange={(e) => setShowInSearch(e.target.checked)}
-                  className="rounded"
+                  onCheckedChange={(checked) => setShowInSearch(checked === true)}
                 />
                 Show in search
               </label>
             </div>
-          </div>
 
-          {/* Form actions */}
-          <div className="mt-4 flex gap-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Saving...' : editingFieldId ? 'Update Field' : 'Create Field'}
-            </button>
-            <button
-              type="button"
-              onClick={cancelForm}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : editingFieldId ? 'Update Field' : 'Create Field'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {fieldToDelete?.name}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{fieldToDelete?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Fields list */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : fields.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="mb-3 text-muted-foreground">
-            No fields configured yet. Add your first dynamic field to start collecting data for this item type.
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+        </div>
+      ) : fields.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <Columns3 className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="mb-1 text-lg font-semibold">No fields yet</h3>
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
+            Add your first dynamic field to start collecting data for this item type.
           </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-1 h-4 w-4" />
             Add First Field
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-1">
-          {sorted.map((field, index) => (
-            <div key={field.id} className="flex items-center justify-between rounded-lg border p-3">
+          {sorted.map((field) => (
+            <div
+              key={field.id}
+              draggable
+              onDragStart={(e) => { e.dataTransfer.setData('text/plain', field.id); }}
+              onDragOver={(e) => { e.preventDefault(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const draggedId = e.dataTransfer.getData('text/plain');
+                handleDragReorder(draggedId, field.id);
+              }}
+              className="flex cursor-grab items-center justify-between rounded-lg border p-3 active:cursor-grabbing"
+            >
               <div className="flex items-center gap-3">
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
                 <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {getHumanTypeLabel(field.type)}
                 </span>
@@ -987,53 +1000,34 @@ export default function DynamicFieldsPage({ params }: FieldsPageProps) {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <div className="mr-2 flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => handleMoveUp(sorted, index)}
-                    disabled={index === 0}
-                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Move up"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMoveDown(sorted, index)}
-                    disabled={index === sorted.length - 1}
-                    className="rounded px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Move down"
-                  >
-                    ▼
-                  </button>
-                </div>
                 <span className="mr-2 text-xs text-muted-foreground">
                   {field.showInList && <span className="rounded bg-muted px-1.5 py-0.5">In list</span>}
                   {field.unit && <span className="ml-1 rounded bg-muted px-1.5 py-0.5">{field.unit}</span>}
                   <span className="ml-1">order {field.order}</span>
                 </span>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleDuplicate(field)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
                   title="Duplicate"
                 >
-                  Dup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startEditing(field)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openEditDialog(field)}
                 >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(field.id)}
-                  className="text-xs text-destructive hover:text-destructive/80"
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openDeleteDialog(field)}
+                  className="text-destructive hover:text-destructive/80"
                 >
-                  Delete
-                </button>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           ))}
