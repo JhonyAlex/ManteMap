@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundError } from '@mantemap/shared';
 
 // ---------------------------------------------------------------------------
@@ -77,19 +77,19 @@ const mockMetrics = {
 };
 
 const mockItems = [
-  { id: 'i1', name: 'Pump A', createdAt: new Date('2026-07-18T10:00:00Z'), updatedAt: new Date('2026-07-18T11:00:00Z'), itemType: { name: 'Equipment' }, status: { name: 'Active' } },
+  { id: 'i1', name: 'Pump A', slug: 'pump-a', itemTypeId: 'cltypexxxxxxxxxxxxxxxxx', statusId: 'clstatxxxxxxxxxxxxxxxxx', locationId: null, createdAt: new Date('2026-07-18T10:00:00Z'), updatedAt: new Date('2026-07-18T11:00:00Z'), itemType: { name: 'Equipment' }, status: { name: 'Active' } },
 ];
 
 const mockDocVersions = [
-  { id: 'v1', documentId: 'd1', version: 1, fileName: 'spec.pdf', createdAt: new Date('2026-07-18T09:00:00Z'), document: { name: 'Spec doc' } },
+  { id: 'v1', documentId: 'd1', version: 1, fileName: 'spec.pdf', mimeType: 'application/pdf', sizeBytes: 1024, storagePath: '/storage/v1', uploadedBy: 'cluserxxxxxxxxxxxxxxxxxx', createdAt: new Date('2026-07-18T09:00:00Z'), document: { name: 'Spec doc' } },
 ];
 
 const mockAlerts = [
-  { id: 'a1', title: 'Doc expiring', severity: 'WARNING', createdAt: new Date('2026-07-18T08:00:00Z') },
+  { id: 'a1', projectId: PROJECT_ID, alertType: 'DOCUMENT_EXPIRING' as const, severity: 'WARNING' as const, status: 'ACTIVE' as const, sourceType: 'document', sourceId: 'd1', title: 'Doc expiring', message: null, metadata: null, acknowledgedAt: null, dismissedAt: null, createdAt: new Date('2026-07-18T08:00:00Z'), updatedAt: new Date('2026-07-18T08:00:00Z') },
 ];
 
 const mockEvents = [
-  { id: 'e1', title: 'Maintenance', startAt: new Date('2026-07-20T12:00:00Z'), createdAt: new Date('2026-07-18T07:00:00Z') },
+  { id: 'e1', projectId: PROJECT_ID, title: 'Maintenance', description: null, itemId: null, startAt: new Date('2026-07-20T12:00:00Z'), endAt: new Date('2026-07-20T13:00:00Z'), allDay: false, rrule: null, color: null, createdAt: new Date('2026-07-18T07:00:00Z'), updatedAt: new Date('2026-07-18T07:00:00Z') },
 ];
 
 beforeEach(() => {
@@ -317,8 +317,8 @@ describe('exportProjectCsv', () => {
   it('exports items as CSV', async () => {
     vi.mocked(requireProjectMember).mockResolvedValue(undefined as never);
     vi.mocked(getItemsForExport).mockResolvedValue([
-      { id: 'i1', name: 'Pump A', createdAt: new Date(), itemType: { name: 'Equipment' }, status: { name: 'Active' }, location: { name: 'Building A' } },
-    ]);
+      { id: 'i1', name: 'Pump A', slug: 'pump-a', itemTypeId: 'cltypexxxxxxxxxxxxxxxxx', statusId: 'clstatxxxxxxxxxxxxxxxxx', locationId: 'clloc1xxxxxxxxxxxxxxxxxx', createdAt: new Date(), updatedAt: new Date(), itemType: { name: 'Equipment' }, status: { name: 'Active' }, location: { name: 'Building A' } },
+    ] as any);
     vi.mocked(toCsv).mockReturnValue('"Name","Type","Status","Location","Created At"\r\n"Pump A","Equipment","Active","Building A","2026-07-18"');
 
     const result = await exportProjectCsv(PROJECT_ID, USER_ID, 'items');
@@ -331,8 +331,8 @@ describe('exportProjectCsv', () => {
   it('exports documents as CSV', async () => {
     vi.mocked(requireProjectMember).mockResolvedValue(undefined as never);
     vi.mocked(getDocumentsForExport).mockResolvedValue([
-      { id: 'd1', name: 'Spec', mimeType: 'application/pdf', sizeBytes: 1024, expiresAt: null, createdAt: new Date(), item: { name: 'Pump A' } },
-    ]);
+      { id: 'd1', name: 'Spec', itemId: 'cli1xxxxxxxxxxxxxxxxxxx', mimeType: 'application/pdf', sizeBytes: 1024, expiresAt: null, currentVersionId: null, createdAt: new Date(), updatedAt: new Date(), item: { name: 'Pump A' } },
+    ] as any);
     vi.mocked(toCsv).mockReturnValue('"Name","Item","MIME Type","Size (bytes)","Expires At","Created At"\r\n"Spec","Pump A","application/pdf","1024","","2026-07-18"');
 
     const result = await exportProjectCsv(PROJECT_ID, USER_ID, 'documents');
@@ -345,8 +345,8 @@ describe('exportProjectCsv', () => {
   it('exports alerts as CSV', async () => {
     vi.mocked(requireProjectMember).mockResolvedValue(undefined as never);
     vi.mocked(getAlertsForExport).mockResolvedValue([
-      { id: 'a1', alertType: 'DOCUMENT_EXPIRING', severity: 'WARNING', status: 'ACTIVE', title: 'Doc expiring', createdAt: new Date() },
-    ]);
+      { id: 'a1', projectId: PROJECT_ID, alertType: 'DOCUMENT_EXPIRING', severity: 'WARNING', status: 'ACTIVE', sourceType: 'document', sourceId: 'd1', title: 'Doc expiring', message: null, metadata: null, acknowledgedAt: null, dismissedAt: null, createdAt: new Date(), updatedAt: new Date() },
+    ] as any);
     vi.mocked(toCsv).mockReturnValue('"Type","Severity","Status","Title","Created At"\r\n"DOCUMENT_EXPIRING","WARNING","ACTIVE","Doc expiring","2026-07-18"');
 
     const result = await exportProjectCsv(PROJECT_ID, USER_ID, 'alerts');

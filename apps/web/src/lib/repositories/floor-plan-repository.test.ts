@@ -20,6 +20,7 @@ const { mockPrismaClient } = vi.hoisted(() => ({
   mockPrismaClient: {
     floorPlan: {
       create: vi.fn(),
+      findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),

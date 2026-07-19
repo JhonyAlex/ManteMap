@@ -366,7 +366,7 @@ describe('FloorPlanService addMarker', () => {
     );
 
     await expect(
-      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { x: 0.5, y: 0.3 }, MEMBER_ID)
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { type: 'POINT', x: 0.5, y: 0.3 }, MEMBER_ID)
     ).rejects.toThrow();
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -378,7 +378,7 @@ describe('FloorPlanService addMarker', () => {
     const result = await addMarker(
       PROJECT_ID,
       FLOOR_PLAN_ID,
-      { x: 0.5, y: 0.3, label: 'Server Rack', color: '#ff0000' },
+      { type: 'POINT', x: 0.5, y: 0.3, label: 'Server Rack', color: '#ff0000' },
       OWNER_ID
     );
 
@@ -393,7 +393,7 @@ describe('FloorPlanService addMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
 
     await expect(
-      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { x: 1.5, y: 0.3 }, OWNER_ID)
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { type: 'POINT', x: 1.5, y: 0.3 }, OWNER_ID)
     ).rejects.toThrow(); // Zod rejects first
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -402,7 +402,7 @@ describe('FloorPlanService addMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
 
     await expect(
-      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { x: 0.5, y: -0.1 }, OWNER_ID)
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { type: 'POINT', x: 0.5, y: -0.1 }, OWNER_ID)
     ).rejects.toThrow(); // Zod rejects first
     expect(repository.createMarker).not.toHaveBeenCalled();
   });
@@ -411,7 +411,7 @@ describe('FloorPlanService addMarker', () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
 
     await expect(
-      addMarker(PROJECT_ID, 'clnonexistentxxxxxxx', { x: 0.5, y: 0.3 }, OWNER_ID)
+      addMarker(PROJECT_ID, 'clnonexistentxxxxxxx', { type: 'POINT', x: 0.5, y: 0.3 }, OWNER_ID)
     ).rejects.toThrow(NotFoundError);
     expect(repository.createMarker).not.toHaveBeenCalled();
   });

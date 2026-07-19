@@ -253,7 +253,7 @@ describe('useUpsertChannelConfig', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     const body = JSON.parse(
-      fetchSpy.mock.calls[0][1].body as string
+      (fetchSpy.mock.calls[0]![1] as Record<string, unknown>).body as string
     );
     expect(body.enabled).toBe(true);
   });

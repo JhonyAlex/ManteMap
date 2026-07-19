@@ -101,7 +101,7 @@ function mockFetchError(status: number, error: string) {
 function getTableBodyText(): string {
   const table = screen.queryByRole('table');
   if (!table) return '';
-  return within(table).getByTestId?.('') ?? table.textContent ?? '';
+  return table.textContent ?? '';
 }
 
 // ---------------------------------------------------------------------------
