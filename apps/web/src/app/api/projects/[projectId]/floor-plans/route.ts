@@ -24,7 +24,6 @@ export async function GET(
     const { projectId } = await params;
     const url = new URL(request.url);
     const locationId = url.searchParams.get('locationId');
-    if (!locationId) return badRequest('locationId query parameter is required');
 
     const result = await listFloorPlans(projectId, locationId, auth.user.id);
     return NextResponse.json({ data: result.floorPlans } satisfies ApiResponse);

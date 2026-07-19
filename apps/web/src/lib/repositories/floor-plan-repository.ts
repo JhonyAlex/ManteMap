@@ -105,6 +105,18 @@ export async function findFloorPlansByLocation(
   return client.floorPlan.findMany({
     where: { locationId, active: true },
     orderBy: { createdAt: 'desc' },
+    include: { location: { select: { id: true, name: true } } },
+  });
+}
+
+export async function findFloorPlansByProject(
+  projectId: string,
+  client: PrismaClient = prisma
+): Promise<FloorPlan[]> {
+  return client.floorPlan.findMany({
+    where: { location: { projectId }, active: true },
+    orderBy: { createdAt: 'desc' },
+    include: { location: { select: { id: true, name: true } } },
   });
 }
 

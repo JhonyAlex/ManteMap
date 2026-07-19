@@ -25,6 +25,7 @@ import {
   createFloorPlan as createFloorPlanRepo,
   findFloorPlanById,
   findFloorPlansByLocation,
+  findFloorPlansByProject,
   deleteFloorPlan as deleteFloorPlanRepo,
   createMarker as createMarkerRepo,
   findMarkerById,
@@ -135,12 +136,14 @@ export async function getFloorPlan(
 
 export async function listFloorPlans(
   projectId: string,
-  locationId: string,
+  locationId: string | null,
   userId: string
 ) {
   await requireProjectMember(projectId, userId);
 
-  const floorPlans = await findFloorPlansByLocation(locationId);
+  const floorPlans = locationId
+    ? await findFloorPlansByLocation(locationId)
+    : await findFloorPlansByProject(projectId);
   return { floorPlans };
 }
 
