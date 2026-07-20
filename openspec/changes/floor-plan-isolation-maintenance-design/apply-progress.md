@@ -17,47 +17,15 @@
 | 2.1–2.2 | 16 repository tests passed | Covered by service RED contract | 16 repository + 63 service tests passed | Project, plan, marker, and item resolver paths are independent | Service facade reduced to focused module exports |
 | 2.3 | N/A | N/A | Focused tests passed; `@mantemap/web` typecheck passed | N/A | N/A |
 
-## Work Unit Evidence
+## Definitive Validation and Review Receipt
 
-| Evidence | Result |
+The completed isolation unit was validated at commit `6b103f4850a0e0bb1ae1c41138fcd33cb8ea29ea` (`6b103f4`, `fix: enforce project isolation and atomic marker associations`). Its final native review lineage is `review-floor-plan-isolation-evidence-v3`, with terminal result `post-apply: allow`.
+
+| Evidence | Definitive result |
 |---|---|
-| Focused tests | `pnpm --filter @mantemap/web exec vitest run src/lib/services/floor-plan-service.test.ts` — exit 0, 63 passed; repository command — exit 0, 16 passed |
-| Runtime harness | Service-level mocked storage/repository isolation scenarios — 6 negative cases passed; API route runtime harness is deferred because routes already delegate to these service boundaries and no authenticated DB harness is available in this work unit |
-| Typecheck | `pnpm --filter @mantemap/web typecheck` — exit 0 |
-| Rollback boundary | Revert `apps/web/src/lib/repositories/floor-plan-repository.ts`, the four floor-plan service modules, and `floor-plan-service.test.ts`; no schema or persisted-data changes |
-
-## Known Validation Note
-
-Root `pnpm typecheck` remains blocked by an unrelated existing `packages/shared/src/types/metrics.test.ts` missing `vitest` module/types. The affected web package typecheck passes.
-
-## Follow-up Evidence: Isolation Contract Hardening
-
-- Extended the existing mocked two-project rejection matrix without changing production behavior. The tests now assert the exact project-scoped location, plan, marker, and item resolver calls; foreign location, plan, marker, and item inputs must stop before storage or create/update/delete operations.
-- Added a dedicated foreign-item-on-marker-modification case that proves `updateMarkerWithAssociation` is not reached after the project-scoped item resolver rejects it.
-- Terminal review receipt remains pending; this evidence update does not reopen the deferred maintenance scope.
-
-| Evidence | Result |
-|---|---|
-| Focused isolation suite | `pnpm --filter @mantemap/web exec vitest run src/lib/repositories/floor-plan-repository.test.ts src/lib/services/floor-plan-service.test.ts src/app/api/projects/[projectId]/floor-plans/route.test.ts` — exit 0; 106 passed across 3 files. |
+| Focused isolation suite | `pnpm --filter @mantemap/web exec vitest run src/lib/repositories/floor-plan-repository.test.ts src/lib/services/floor-plan-service.test.ts src/app/api/projects/[projectId]/floor-plans/route.test.ts` — exit 0; **106 passed** across the three files. |
+| Files run | `apps/web/src/lib/repositories/floor-plan-repository.test.ts`; `apps/web/src/lib/services/floor-plan-service.test.ts`; `apps/web/src/app/api/projects/[projectId]/floor-plans/route.test.ts`. |
 | Web typecheck | `pnpm --filter @mantemap/web typecheck` — exit 0. |
-| Runtime harness | N/A — no authenticated two-project PostgreSQL harness is available; mocked service/repository contracts cover the isolation boundary without live DB dependence. |
-
-## Bounded Review Correction — `review-d63e03c169c4bd21`
-
-- Replaced the service-level duplicate pre-check with repository operations that perform the lookup and marker create/reassignment in one `runSerializable` transaction. PostgreSQL serialization failures receive the existing bounded P2034 retry; a retry observes the committed association and returns the existing `ConflictError` semantics.
-- Marker POST and PATCH now map `ConflictError` to HTTP 409.
-
-### TDD Cycle Evidence
-
-| RED | GREEN | REFACTOR |
-|---|---|---|
-| Added atomic repository and route-conflict tests; focused run failed with 5 expected failures: missing atomic operations, services still used non-atomic writes, and routes returned 500 instead of 409. | `pnpm --filter @mantemap/web exec vitest run src/lib/repositories/floor-plan-repository.test.ts src/lib/services/floor-plan-service.test.ts src/app/api/projects/[projectId]/floor-plans/route.test.ts` — exit 0; 3 files, 104 tests passed. | Reused the existing `runSerializable` helper; no schema or migration change. |
-
-### Correction Work Unit Evidence
-
-| Evidence | Result |
-|---|---|
-| Focused tests | `pnpm --filter @mantemap/web exec vitest run src/lib/repositories/floor-plan-repository.test.ts src/lib/services/floor-plan-service.test.ts src/app/api/projects/[projectId]/floor-plans/route.test.ts` — exit 0; 104 passed. |
-| Runtime harness | N/A — the affected persistence boundary is represented by the repository transaction unit test; no authenticated PostgreSQL API harness is available in this work unit. |
-| Typecheck | `pnpm --filter @mantemap/web typecheck` — exit 0. |
-| Rollback boundary | Revert only the atomic marker-association repository operations, marker service wiring, marker route conflict mapping, and their focused tests; no schema or persisted data changes. |
+| Native review | `review-floor-plan-isolation-evidence-v3` — `post-apply: allow`. |
+| PostgreSQL concurrency | Not executed with real PostgreSQL in this unit. The serializable transaction behavior has mocked/repository coverage only; the next migration unit must prove database-level concurrency and the final partial unique constraint. |
+| Rollback boundary | Revert the floor-plan repository/service/route changes and focused tests from the validated commit; this unit created no schema or persisted-data change. |

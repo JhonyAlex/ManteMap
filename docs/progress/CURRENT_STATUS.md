@@ -6,7 +6,7 @@
 
 ## Fase activa
 
-**Fases 0-10 completadas.** La implementación fuente de la unidad `floor-plan-isolation-maintenance-design` está completa; su recibo terminal de revisión todavía está pendiente. La persistencia de mantenimiento (modelo/migración) permanece diferida a una unidad posterior.
+**Fases 0-10 completadas.** La unidad `floor-plan-isolation-maintenance-design` cerró su revisión nativa con `post-apply: allow`. La persistencia de mantenimiento (modelo/migración) permanece diferida a una unidad posterior.
 
 ### Fases completadas
 
@@ -66,27 +66,28 @@
 - ✅ 19 dominios de specs en openspec/specs/.
 - ✅ ~2,003 tests unitarios/componente/integración.
 - ✅ Notificaciones externas: 4 canales (Email, Slack, Teams, Telegram), dispatcher, channel config UI y delivery audit log.
+- ✅ Aislamiento por proyecto de ubicaciones, planos, marcadores e ítems asociados, con conflictos de asociación duplicada controlados.
 
 ## Qué está incompleto
 
 - Deploy de fases 7-10 en producción (migraciones pendientes de aplicar vía Dokploy auto-deploy).
 - Seed de demostración.
 - Preference-based alert filtering (deferido de Fase 8).
-- Recibo terminal de revisión pendiente para la implementación fuente de aislamiento por proyecto de ubicaciones, planos, marcadores e ítems asociados.
 - Dominio de mantenimiento preventivo: diseñado en ADR-009, todavía sin modelos, migración, generador, calendario, panel, alertas ni onboarding.
 
 ## Qué errores existen
 
 - Known: Windows production build may fail at standalone symlink creation with `EPERM`.
-- Known: @mantemap/ui tiene error de typecheck pre-existente (@/lib/utils resolution).
+- Known: el typecheck raíz mantiene un fallo preexistente: `packages/shared/src/types/metrics.test.ts` no resuelve los tipos/módulo de `vitest`.
 - Known: 51 tests de integración requieren una PostgreSQL de pruebas aislada; la suite offline queda en 2,172 passed, 51 failed y 44 skipped. Ver `docs/testing/database-test-isolation.md`.
 
 ## Última validación de remediación
 
-- ✅ Corregidos los parse errors de cinco tests que bloqueaban TypeScript y Dokploy.
-- ✅ Eliminado el conflicto de segmentos hermanos `[projectCode]` / `[projectId]`; la ruta única acepta ambos identificadores y canonicaliza el CUID base con 308.
+- ✅ Revisión nativa de aislamiento: `review-floor-plan-isolation-evidence-v3` — `post-apply: allow`.
 - ✅ `pnpm --filter @mantemap/web typecheck` pasa.
-- ⚠️ `pnpm --filter @mantemap/web test`: 2,172 passed, 51 DB-dependent failed, 44 skipped (2,267 total).
+- ⚠️ El typecheck raíz mantiene el fallo preexistente de tipos/módulo `vitest` en `packages/shared/src/types/metrics.test.ts`.
+- ⚠️ Los tests raíz mantienen los fallos dependientes de PostgreSQL documentados (51 pruebas de integración sin base aislada).
+- ⚠️ El build raíz conserva el riesgo conocido de Windows: creación de symlink standalone con `EPERM`.
 
 ---
 
@@ -113,9 +114,10 @@ pnpm dev
 
 ```bash
 pnpm lint              # ✅ Pass
-pnpm typecheck         # ✅ Pass
-pnpm build             # Known Windows standalone symlink EPERM risk
-pnpm test              # ✅ ~1,983 unit/component, 51 integration (DB offline)
+pnpm --filter @mantemap/web typecheck  # ✅ Pass
+pnpm typecheck         # ⚠️ Falla por tipos/módulo vitest preexistentes en packages/shared
+pnpm build             # ⚠️ Riesgo conocido: standalone symlink EPERM en Windows
+pnpm test              # ⚠️ 51 integraciones requieren PostgreSQL aislada
 ```
 
 ---
@@ -126,8 +128,8 @@ pnpm test              # ✅ ~1,983 unit/component, 51 integration (DB offline)
 
 ## Último commit
 
-`549ae7f` — fix: add trustHost to auth config to resolve UntrustedHost error
+`6b103f4` — fix: enforce project isolation and atomic marker associations
 
 ## Próxima tarea concreta
 
-Completar el recibo terminal de revisión de `floor-plan-isolation-maintenance-design`; la fuente de aislamiento por proyecto ya está implementada y su evidencia focalizada está actualizada. La persistencia de mantenimiento (revisiones efectivas, modelos y migración aditiva) queda diferida a una unidad revisada posterior.
+Crear la unidad `feature/maintenance-model-migration` desde `master` actualizado para implementar únicamente el modelo y la migración aditiva de mantenimiento. La generación, calendario, panel, alertas y onboarding quedan fuera de ese alcance.
