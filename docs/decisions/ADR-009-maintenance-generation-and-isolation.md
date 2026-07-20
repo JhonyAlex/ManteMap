@@ -36,6 +36,8 @@ flowchart LR
 - A non-null associated item belongs to the same project.
 - One item may be associated only once per floor plan.
 - Cross-project plan reads, image reads, lists, uploads, deletes, and marker create/read/update/delete return safe not-found responses without side effects.
+- The final persistence migration MUST enforce non-null marker associations with a PostgreSQL partial unique index equivalent to `UNIQUE (floor_plan_id, item_id) WHERE item_id IS NOT NULL`. It prevents duplicate item associations on a plan while allowing multiple label-only markers with `itemId = null`.
+- The current serializable transaction and retry protect the application path temporarily; they do **not** replace this final database constraint.
 
 ### 2. Separate maintenance from calendar events
 
@@ -102,8 +104,8 @@ No migration is created by this design work.
 
 1. Add required Project timezone/horizon columns with safe defaults, validate existing rows, and retain `Europe/Madrid` as the initial value.
 2. Add maintenance enums and the plan, immutable revision, revision checklist, work-order, work-order checklist, generation-run, and activity tables in one new additive Prisma migration; never edit applied migrations.
-3. Add indexes and foreign keys for project, plan, item, schedule/due, status, and activity queries, plus `unique(maintenancePlanId, occurrenceKey)`.
-4. Validate on isolated PostgreSQL, regenerate the Prisma client, and deploy persistence disabled.
+3. Add indexes and foreign keys for project, plan, item, schedule/due, status, and activity queries, plus `unique(maintenancePlanId, occurrenceKey)` and the partial unique marker-association index. The index must allow multiple `itemId = null` rows while rejecting concurrent duplicate non-null `(floorPlanId, itemId)` rows.
+4. Validate on isolated PostgreSQL, regenerate the Prisma client, and deploy persistence disabled. The validation includes two concurrent PostgreSQL transactions/connections attempting the same non-null marker association: exactly one persists and the other is rejected by the database constraint; a separate case proves two null associations succeed.
 5. Add generator/services in a later reviewed change; calendar, panel, alerts, and onboarding remain later phases.
 
 ## Concrete Test Matrix
@@ -113,6 +115,7 @@ No migration is created by this design work.
 | Plan isolation | own-project read/image/delete | foreign plan/location 404; no storage/write |
 | Marker isolation | marker on requested plan | foreign plan, mismatched marker, foreign item 404 |
 | Associations | one item marker per plan | duplicate create/reassignment conflict |
+| Marker concurrency | concurrent same-plan, same-item writes | real PostgreSQL proves one commit and database rejection of the other; multiple `itemId = null` markers remain valid |
 | Identity | one order per occurrence | concurrent generator cannot duplicate |
 | Time | Europe/Madrid normal scheduling | invalid IANA zone; DST gap and fold |
 | Horizon | default 90; accepts 30 and 365 | rejects 29 and 366 |
