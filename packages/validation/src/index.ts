@@ -13,3 +13,4 @@ export * from './location';
 export * from './floor-plan';
 export * from './alert';
 export * from './notification';
+export * from './maintenance';
