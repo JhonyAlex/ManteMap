@@ -53,6 +53,7 @@ vi.mock('@/lib/services/floor-plan-service', () => ({
 
 vi.mock('@/lib/http/api-error', () => ({
   badRequest: (msg: string) => new Response(JSON.stringify({ error: 'VALIDATION_ERROR', message: msg }), { status: 400 }),
+  conflict: (msg: string) => new Response(JSON.stringify({ error: 'CONFLICT', message: msg }), { status: 409 }),
   notFound: (msg: string) => new Response(JSON.stringify({ error: 'NOT_FOUND', message: msg }), { status: 404 }),
   forbidden: (msg?: string) => new Response(JSON.stringify({ error: 'AUTHORIZATION_ERROR', message: msg ?? 'Insufficient permissions' }), { status: 403 }),
   internalError: () => new Response(JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Internal server error' }), { status: 500 }),
@@ -388,6 +389,16 @@ describe('POST /api/projects/[projectId]/floor-plans/[floorPlanId]/markers', () 
 
     expect(response.status).toBe(400);
   });
+
+  it('returns 409 when marker creation conflicts', async () => {
+    const { ConflictError } = await import('@mantemap/shared');
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockAddMarker.mockRejectedValue(new ConflictError('Item is already associated'));
+
+    const response = await POST_MARKER(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ x: 0.5, y: 0.3 }) }), { params: Promise.resolve(makeParams()) });
+
+    expect(response.status).toBe(409);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -415,6 +426,16 @@ describe('PATCH /api/projects/[projectId]/floor-plans/[floorPlanId]/markers/[mar
 
     expect(response.status).toBe(200);
     expect(body.data.x).toBe(0.7);
+  });
+
+  it('returns 409 when marker reassignment conflicts', async () => {
+    const { ConflictError } = await import('@mantemap/shared');
+    mockGetAuthUser.mockResolvedValue({ user: { id: USER_ID } });
+    mockEditMarker.mockRejectedValue(new ConflictError('Item is already associated'));
+
+    const response = await PATCH_MARKER(new Request('http://localhost', { method: 'PATCH', body: JSON.stringify({ itemId: 'clitemxxxxxxxxxxxxxxxxx' }) }), { params: Promise.resolve(makeParams()) });
+
+    expect(response.status).toBe(409);
   });
 });
 

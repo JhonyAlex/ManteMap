@@ -9,10 +9,10 @@
 
 import { NextResponse } from 'next/server';
 import { createMarkerSchema } from '@mantemap/validation';
-import { AuthorizationError, NotFoundError, ValidationError } from '@mantemap/shared';
+import { AuthorizationError, ConflictError, NotFoundError, ValidationError } from '@mantemap/shared';
 import { getAuthUser } from '@/lib/auth/session';
 import { resolveProjectId } from '@/lib/services/project-service';
-import { badRequest, forbidden, internalError, notFound } from '@/lib/http/api-error';
+import { badRequest, conflict, forbidden, internalError, notFound } from '@/lib/http/api-error';
 import { addMarker, listMarkers } from '@/lib/services/floor-plan-service';
 import type { ApiResponse } from '@mantemap/shared';
 
@@ -57,6 +57,7 @@ export async function POST(request: Request, { params }: Params) {
     if (error instanceof NotFoundError) return notFound('Floor plan not found');
     if (error instanceof AuthorizationError) return forbidden();
     if (error instanceof ValidationError) return badRequest(error.message);
+    if (error instanceof ConflictError) return conflict(error.message);
     return internalError();
   }
 }

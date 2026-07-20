@@ -233,6 +233,21 @@ Hoja de ruta de desarrollo por fases.
 
 ---
 
+## Fase intermedia — Aislamiento de planos y diseño de mantenimiento 🟡
+
+**Objetivo**: cerrar el aislamiento por proyecto antes de ampliar planos y fijar el contrato del dominio de mantenimiento preventivo.
+
+| Entregable | Estado | Criterio de aceptación |
+|---|---|---|
+| Aislamiento de planos, ubicaciones, marcadores e ítems | ✅ Completado | Lecturas, imágenes y mutaciones cross-project se rechazan sin efectos laterales |
+| Pruebas negativas de asociaciones | ✅ Completado | Se rechazan asociaciones inválidas y duplicadas por plano |
+| Diseño de mantenimiento + ADR-009 | ✅ Diseñado | Horizonte, recuperación, zona horaria, ciclo de vida, permisos y modelos definidos |
+| Modelos y migración de mantenimiento | ⏸️ Siguiente unidad | Migración aditiva separada; sin calendario, panel, alertas ni onboarding |
+
+**Dependencias**: Fases de proyectos, ítems, ubicaciones y planos completadas. **Aislamiento completado**: `floor-plan-isolation-maintenance-design`; la persistencia de mantenimiento queda diferida.
+
+---
+
 ## MVP
 
 El MVP corresponde a las **Fases 0–7** completas (nuestro Phase 8 = ROADMAP Fase 7). Fases 8-9 son extensiones post-MVP.
@@ -254,4 +269,4 @@ Debe permitir:
 
 ---
 
-> **Última actualización**: 2026-07-18. Fases 0-9 completas vía SDD: Auth, ItemTypes, DynamicFields, Statuses, Items, Documents, Events & Calendar, Locations & Floor Plans, Alerts & Notifications, Dashboard & Reports, External Notifications (email/Slack/Teams/Telegram). Fase 10 completada: Advanced Features — QR Codes, Webhooks, Mobile Inspections, Polygons, PDF Export, Layers (6 PRs, 4 slices, 62 tasks, ~268 tests). ~2,112 tests. ADR-005 resuelto: migración `20260718150342_add_all_phase_models` generada. Próxima fase: OCR / Document AI (Fase 11 — Phase 12).
+> **Última actualización**: 2026-07-20. Fases 0-10 y la unidad intermedia de aislamiento de planos completadas. ADR-009 deja la persistencia de mantenimiento para una posterior unidad revisada, todavía sin implementación.

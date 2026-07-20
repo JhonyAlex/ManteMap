@@ -12,7 +12,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NotFoundError, ValidationError } from '@mantemap/shared';
+import { ConflictError, NotFoundError, ValidationError } from '@mantemap/shared';
 
 // ---------------------------------------------------------------------------
 // Mocks — use vi.hoisted to avoid hoisting issues
@@ -35,11 +35,18 @@ vi.mock('@/lib/repositories/floor-plan-repository', () => ({
   createFloorPlan: vi.fn(),
   findFloorPlanById: vi.fn(),
   findFloorPlansByLocation: vi.fn(),
+  findProjectLocationById: vi.fn(),
+  findProjectFloorPlanById: vi.fn(),
+  findProjectMarkerById: vi.fn(),
+  findProjectItemById: vi.fn(),
+  markerItemAssociationExists: vi.fn(),
   deleteFloorPlan: vi.fn(),
   createMarker: vi.fn(),
+  createMarkerWithAssociation: vi.fn(),
   findMarkerById: vi.fn(),
   findMarkersByFloorPlan: vi.fn(),
   updateMarker: vi.fn(),
+  updateMarkerWithAssociation: vi.fn(),
   deleteMarker: vi.fn(),
 }));
 
@@ -74,6 +81,7 @@ const PROJECT_ID = 'clprojxxxxxxxxxxxxxxxxxx';
 const LOCATION_ID = 'clloc1xxxxxxxxxxxxxxxxxx';
 const FLOOR_PLAN_ID = 'clfp1xxxxxxxxxxxxxxxxxxx';
 const MARKER_ID = 'clmk1xxxxxxxxxxxxxxxxxxx';
+const ITEM_ID = 'clitemxxxxxxxxxxxxxxxxx';
 const OWNER_ID = 'clownerxxxxxxxxxxxxxxxxx';
 const MEMBER_ID = 'clmembxxxxxxxxxxxxxxxxx';
 
@@ -114,6 +122,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(access.requireProjectMember).mockResolvedValue(undefined);
   vi.mocked(access.requireProjectOwner).mockResolvedValue(undefined);
+  vi.mocked(repository.findProjectLocationById).mockResolvedValue({ id: LOCATION_ID } as never);
+  vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(floorPlanRecord as never);
+  vi.mocked(repository.findProjectMarkerById).mockResolvedValue(markerRecord as never);
+  vi.mocked(repository.findProjectItemById).mockResolvedValue({ id: ITEM_ID } as never);
+  vi.mocked(repository.markerItemAssociationExists).mockResolvedValue(false as never);
 });
 
 // ---------------------------------------------------------------------------
@@ -273,16 +286,16 @@ describe('FloorPlanService getFloorPlan', () => {
   });
 
   it('returns a floor plan by ID', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(floorPlanRecord as never);
 
     const result = await getFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
 
-    expect(repository.findFloorPlanById).toHaveBeenCalledWith(FLOOR_PLAN_ID);
+    expect(repository.findProjectFloorPlanById).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID);
     expect(result.floorPlan).toEqual(floorPlanRecord);
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
 
     await expect(
       getFloorPlan(PROJECT_ID, 'clnonexistentxxxxxxx', MEMBER_ID)
@@ -349,7 +362,7 @@ describe('FloorPlanService removeFloorPlan', () => {
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
 
     await expect(
       removeFloorPlan(PROJECT_ID, 'clnonexistentxxxxxxx', OWNER_ID)
@@ -375,7 +388,7 @@ describe('FloorPlanService addMarker', () => {
 
   it('creates a marker with valid coordinates', async () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
-    vi.mocked(repository.createMarker).mockResolvedValue(markerRecord as never);
+    vi.mocked(repository.createMarkerWithAssociation).mockResolvedValue(markerRecord as never);
 
     const result = await addMarker(
       PROJECT_ID,
@@ -384,7 +397,7 @@ describe('FloorPlanService addMarker', () => {
       OWNER_ID
     );
 
-    expect(repository.createMarker).toHaveBeenCalledWith(
+    expect(repository.createMarkerWithAssociation).toHaveBeenCalledWith(
       FLOOR_PLAN_ID,
       expect.objectContaining({ x: 0.5, y: 0.3, label: 'Server Rack' })
     );
@@ -410,7 +423,7 @@ describe('FloorPlanService addMarker', () => {
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
 
     await expect(
       addMarker(PROJECT_ID, 'clnonexistentxxxxxxx', { type: 'POINT', x: 0.5, y: 0.3 }, OWNER_ID)
@@ -462,7 +475,7 @@ describe('FloorPlanService editMarker', () => {
   it('updates marker coordinates', async () => {
     vi.mocked(repository.findFloorPlanById).mockResolvedValue(floorPlanRecord as never);
     vi.mocked(repository.findMarkerById).mockResolvedValue(markerRecord as never);
-    vi.mocked(repository.updateMarker).mockResolvedValue({ ...markerRecord, x: 0.7 } as never);
+    vi.mocked(repository.updateMarkerWithAssociation).mockResolvedValue({ ...markerRecord, x: 0.7 } as never);
 
     const result = await editMarker(
       PROJECT_ID,
@@ -472,7 +485,7 @@ describe('FloorPlanService editMarker', () => {
       OWNER_ID
     );
 
-    expect(repository.updateMarker).toHaveBeenCalledWith(
+    expect(repository.updateMarkerWithAssociation).toHaveBeenCalledWith(
       FLOOR_PLAN_ID,
       MARKER_ID,
       expect.objectContaining({ x: 0.7, y: 0.8 })
@@ -517,7 +530,7 @@ describe('FloorPlanService removeMarker', () => {
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
 
     await expect(
       removeMarker(PROJECT_ID, 'clnonexistentxxxxxxx', MARKER_ID, OWNER_ID)
@@ -584,7 +597,7 @@ describe('FloorPlanService getFloorPlanImage', () => {
   });
 
   it('returns buffer and correct PNG mimeType', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue({
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue({
       ...floorPlanRecord,
       imageUrl: storagePlanPath,
     } as never);
@@ -592,14 +605,14 @@ describe('FloorPlanService getFloorPlanImage', () => {
     const result = await getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID);
 
     expect(access.requireProjectMember).toHaveBeenCalledWith(PROJECT_ID, MEMBER_ID);
-    expect(repository.findFloorPlanById).toHaveBeenCalledWith(FLOOR_PLAN_ID);
+    expect(repository.findProjectFloorPlanById).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID);
     expect(mockStorageDriver.readFile).toHaveBeenCalledWith(storagePlanPath);
     expect(result.buffer).toEqual(imageBuffer);
     expect(result.mimeType).toBe('image/png');
   });
 
   it('returns correct mimeType for JPG', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue({
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue({
       ...floorPlanRecord,
       imageUrl: 'LOC001/image.jpg',
     } as never);
@@ -610,7 +623,7 @@ describe('FloorPlanService getFloorPlanImage', () => {
   });
 
   it('returns correct mimeType for SVG', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue({
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue({
       ...floorPlanRecord,
       imageUrl: 'LOC001/diagram.svg',
     } as never);
@@ -621,7 +634,7 @@ describe('FloorPlanService getFloorPlanImage', () => {
   });
 
   it('throws NotFoundError when floor plan does not exist', async () => {
-    vi.mocked(repository.findFloorPlanById).mockResolvedValue(null);
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
 
     await expect(
       getFloorPlanImage(PROJECT_ID, 'clnonexistentxxxxxxx', MEMBER_ID)
@@ -636,5 +649,135 @@ describe('FloorPlanService getFloorPlanImage', () => {
     await expect(
       getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Project isolation — RED tests for the ownership-chain invariants
+// ---------------------------------------------------------------------------
+
+describe('FloorPlanService project isolation', () => {
+  it('rejects a foreign location before upload storage or creation', async () => {
+    vi.mocked(repository.findProjectLocationById).mockResolvedValue(null as never);
+
+    await expect(
+      uploadFloorPlan(
+        PROJECT_ID,
+        LOCATION_ID,
+        createMockFile('plan.png', 100),
+        { name: 'Ground Floor', width: 1920, height: 1080 },
+        OWNER_ID
+      )
+    ).rejects.toThrow(NotFoundError);
+
+    expect(repository.findProjectLocationById).toHaveBeenCalledWith(PROJECT_ID, LOCATION_ID);
+    expect(mockStorageDriver.writeFile).not.toHaveBeenCalled();
+    expect(repository.createFloorPlan).not.toHaveBeenCalled();
+  });
+
+  it('rejects a foreign location before listing plans', async () => {
+    vi.mocked(repository.findProjectLocationById).mockResolvedValue(null as never);
+
+    await expect(listFloorPlans(PROJECT_ID, LOCATION_ID, MEMBER_ID)).rejects.toThrow(NotFoundError);
+    expect(repository.findProjectLocationById).toHaveBeenCalledWith(PROJECT_ID, LOCATION_ID);
+    expect(repository.findFloorPlansByLocation).not.toHaveBeenCalled();
+  });
+
+  it('rejects foreign plan reads, image reads, and deletes without side effects', async () => {
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
+
+    await expect(getFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow(NotFoundError);
+    await expect(getFloorPlanImage(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow(NotFoundError);
+    await expect(removeFloorPlan(PROJECT_ID, FLOOR_PLAN_ID, OWNER_ID)).rejects.toThrow(NotFoundError);
+
+    expect(repository.findProjectFloorPlanById).toHaveBeenCalledTimes(3);
+    expect(repository.findProjectFloorPlanById).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID);
+    expect(mockStorageDriver.readFile).not.toHaveBeenCalled();
+    expect(mockStorageDriver.deleteFile).not.toHaveBeenCalled();
+    expect(repository.deleteFloorPlan).not.toHaveBeenCalled();
+  });
+
+  it('rejects marker operations through a foreign plan without mutations', async () => {
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(null as never);
+
+    await expect(listMarkers(PROJECT_ID, FLOOR_PLAN_ID, MEMBER_ID)).rejects.toThrow(NotFoundError);
+    await expect(
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { type: 'POINT', x: 0.5, y: 0.3 }, OWNER_ID)
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { x: 0.6 }, OWNER_ID)
+    ).rejects.toThrow(NotFoundError);
+    await expect(removeMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, OWNER_ID)).rejects.toThrow(NotFoundError);
+
+    expect(repository.findProjectFloorPlanById).toHaveBeenCalledTimes(4);
+    expect(repository.findProjectFloorPlanById).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID);
+    expect(repository.createMarker).not.toHaveBeenCalled();
+    expect(repository.createMarkerWithAssociation).not.toHaveBeenCalled();
+    expect(repository.updateMarker).not.toHaveBeenCalled();
+    expect(repository.updateMarkerWithAssociation).not.toHaveBeenCalled();
+    expect(repository.deleteMarker).not.toHaveBeenCalled();
+  });
+
+  it('rejects a marker that belongs to another requested plan before update or delete', async () => {
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(floorPlanRecord as never);
+    vi.mocked(repository.findProjectMarkerById).mockResolvedValue(null as never);
+
+    await expect(
+      editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { x: 0.6 }, OWNER_ID)
+    ).rejects.toThrow(NotFoundError);
+    await expect(removeMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, OWNER_ID)).rejects.toThrow(NotFoundError);
+
+    expect(repository.findProjectMarkerById).toHaveBeenCalledTimes(2);
+    expect(repository.findProjectMarkerById).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID);
+    expect(repository.updateMarker).not.toHaveBeenCalled();
+    expect(repository.updateMarkerWithAssociation).not.toHaveBeenCalled();
+    expect(repository.deleteMarker).not.toHaveBeenCalled();
+  });
+
+  it('rejects foreign item association and duplicate item reassignment without writes', async () => {
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(floorPlanRecord as never);
+    vi.mocked(repository.findProjectItemById).mockResolvedValue(null as never);
+
+    await expect(
+      addMarker(PROJECT_ID, FLOOR_PLAN_ID, { type: 'POINT', x: 0.5, y: 0.3, itemId: ITEM_ID }, OWNER_ID)
+    ).rejects.toThrow(NotFoundError);
+    expect(repository.findProjectItemById).toHaveBeenCalledWith(PROJECT_ID, ITEM_ID);
+    expect(repository.createMarker).not.toHaveBeenCalled();
+    expect(repository.createMarkerWithAssociation).not.toHaveBeenCalled();
+
+    vi.mocked(repository.findProjectItemById).mockResolvedValue({ id: ITEM_ID } as never);
+    vi.mocked(repository.findProjectMarkerById).mockResolvedValue(markerRecord as never);
+    vi.mocked(repository.updateMarkerWithAssociation).mockRejectedValue(new ConflictError('Item is already associated'));
+
+    await expect(
+      editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { itemId: ITEM_ID }, OWNER_ID)
+    ).rejects.toThrow(ConflictError);
+    expect(repository.findProjectItemById).toHaveBeenLastCalledWith(PROJECT_ID, ITEM_ID);
+    expect(repository.updateMarker).not.toHaveBeenCalled();
+  });
+
+  it('rejects a foreign item during marker modification before the atomic write', async () => {
+    vi.mocked(repository.findProjectFloorPlanById).mockResolvedValue(floorPlanRecord as never);
+    vi.mocked(repository.findProjectMarkerById).mockResolvedValue(markerRecord as never);
+    vi.mocked(repository.findProjectItemById).mockResolvedValue(null as never);
+
+    await expect(
+      editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { itemId: ITEM_ID }, OWNER_ID)
+    ).rejects.toThrow(NotFoundError);
+
+    expect(repository.findProjectMarkerById).toHaveBeenCalledWith(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID);
+    expect(repository.findProjectItemById).toHaveBeenCalledWith(PROJECT_ID, ITEM_ID);
+    expect(repository.updateMarkerWithAssociation).not.toHaveBeenCalled();
+  });
+
+  it('delegates same-plan item writes to the atomic association operations', async () => {
+    vi.mocked(repository.createMarkerWithAssociation).mockResolvedValue(markerRecord as never);
+    vi.mocked(repository.updateMarkerWithAssociation).mockResolvedValue(markerRecord as never);
+
+    await addMarker(PROJECT_ID, FLOOR_PLAN_ID, { type: 'POINT', x: 0.5, y: 0.3, itemId: ITEM_ID }, OWNER_ID);
+    await editMarker(PROJECT_ID, FLOOR_PLAN_ID, MARKER_ID, { itemId: ITEM_ID }, OWNER_ID);
+
+    expect(repository.createMarkerWithAssociation).toHaveBeenCalledWith(FLOOR_PLAN_ID, expect.objectContaining({ itemId: ITEM_ID }));
+    expect(repository.updateMarkerWithAssociation).toHaveBeenCalledWith(FLOOR_PLAN_ID, MARKER_ID, { itemId: ITEM_ID });
   });
 });

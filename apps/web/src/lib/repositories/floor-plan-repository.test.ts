@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NotFoundError } from '@mantemap/shared';
+import { ConflictError, NotFoundError } from '@mantemap/shared';
 
 // ---------------------------------------------------------------------------
 // Mocks — use vi.hoisted to avoid hoisting issues
@@ -18,6 +18,8 @@ import { NotFoundError } from '@mantemap/shared';
 
 const { mockPrismaClient } = vi.hoisted(() => ({
   mockPrismaClient: {
+    location: { findFirst: vi.fn() },
+    item: { findFirst: vi.fn() },
     floorPlan: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -33,6 +35,7 @@ const { mockPrismaClient } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -46,9 +49,15 @@ import {
   findFloorPlansByLocation,
   deleteFloorPlan,
   createMarker,
+  createMarkerWithAssociation,
   findMarkerById,
   findMarkersByFloorPlan,
+  findProjectFloorPlanById,
+  findProjectItemById,
+  findProjectLocationById,
+  findProjectMarkerById,
   updateMarker,
+  updateMarkerWithAssociation,
   deleteMarker,
 } from './floor-plan-repository';
 
@@ -86,6 +95,23 @@ const markerRecord = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('FloorPlanRepository project-scoped ownership resolvers', () => {
+  it('adds a second-project restriction to every ownership predicate', async () => {
+    mockPrismaClient.location.findFirst.mockResolvedValue(null);
+    mockPrismaClient.item.findFirst.mockResolvedValue(null);
+
+    await findProjectLocationById('project-a', LOCATION_ID, mockPrismaClient as never);
+    await findProjectFloorPlanById('project-a', FLOOR_PLAN_ID, mockPrismaClient as never);
+    await findProjectMarkerById('project-a', FLOOR_PLAN_ID, MARKER_ID, mockPrismaClient as never);
+    await findProjectItemById('project-a', 'item-a', mockPrismaClient as never);
+
+    expect(mockPrismaClient.location.findFirst).toHaveBeenCalledWith({ where: { id: LOCATION_ID, projectId: 'project-a' } });
+    expect(mockPrismaClient.floorPlan.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ location: { projectId: 'project-a' } }) }));
+    expect(mockPrismaClient.locationMarker.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ floorPlan: { location: { projectId: 'project-a' } } }) }));
+    expect(mockPrismaClient.item.findFirst).toHaveBeenCalledWith({ where: { id: 'item-a', itemType: { projectId: 'project-a' } } });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -232,6 +258,27 @@ describe('FloorPlanRepository createMarker', () => {
       },
     });
     expect(result.itemId).toBe('clitemxxxxxxxxxxxxxxxxx');
+  });
+});
+
+describe('FloorPlanRepository atomic item associations', () => {
+  it('checks and creates an item marker in one serializable transaction', async () => {
+    mockPrismaClient.$transaction.mockImplementation(async (fn: (tx: typeof mockPrismaClient) => unknown) => fn(mockPrismaClient));
+    mockPrismaClient.locationMarker.findFirst.mockResolvedValue(null);
+    mockPrismaClient.locationMarker.create.mockResolvedValue(markerRecord);
+
+    await createMarkerWithAssociation(FLOOR_PLAN_ID, { x: 0.5, y: 0.3, itemId: 'clitemxxxxxxxxxxxxxxxxx' });
+
+    expect(mockPrismaClient.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'Serializable' });
+    expect(mockPrismaClient.locationMarker.create).toHaveBeenCalled();
+  });
+
+  it('preserves the existing association when an atomic reassignment conflicts', async () => {
+    mockPrismaClient.$transaction.mockImplementation(async (fn: (tx: typeof mockPrismaClient) => unknown) => fn(mockPrismaClient));
+    mockPrismaClient.locationMarker.findFirst.mockResolvedValue({ id: 'existing-marker' });
+
+    await expect(updateMarkerWithAssociation(FLOOR_PLAN_ID, MARKER_ID, { itemId: 'clitemxxxxxxxxxxxxxxxxx' })).rejects.toThrow(ConflictError);
+    expect(mockPrismaClient.locationMarker.update).not.toHaveBeenCalled();
   });
 });
 

@@ -1,12 +1,12 @@
 # Estado actual — ManteMap
 
-> Última actualización: 2026-07-19
+> Última actualización: 2026-07-20
 
 ---
 
 ## Fase activa
 
-**Todas las fases del MVP (0-9) completadas.** Próxima: **Fase 11 — Funciones avanzadas**.
+**Fases 0-10 completadas.** La implementación fuente de la unidad `floor-plan-isolation-maintenance-design` está completa; su recibo terminal de revisión todavía está pendiente. La persistencia de mantenimiento (modelo/migración) permanece diferida a una unidad posterior.
 
 ### Fases completadas
 
@@ -72,7 +72,8 @@
 - Deploy de fases 7-10 en producción (migraciones pendientes de aplicar vía Dokploy auto-deploy).
 - Seed de demostración.
 - Preference-based alert filtering (deferido de Fase 8).
-- Fase 11: Funciones avanzadas (QR codes, mobile inspections, webhooks, advanced features).
+- Recibo terminal de revisión pendiente para la implementación fuente de aislamiento por proyecto de ubicaciones, planos, marcadores e ítems asociados.
+- Dominio de mantenimiento preventivo: diseñado en ADR-009, todavía sin modelos, migración, generador, calendario, panel, alertas ni onboarding.
 
 ## Qué errores existen
 
@@ -129,4 +130,4 @@ pnpm test              # ✅ ~1,983 unit/component, 51 integration (DB offline)
 
 ## Próxima tarea concreta
 
-**Fase 11 — Funciones avanzadas**: implementar QR codes para ítems, inspecciones móviles mediante escaneo, webhooks para integraciones externas, y otras funcionalidades extendidas.
+Completar el recibo terminal de revisión de `floor-plan-isolation-maintenance-design`; la fuente de aislamiento por proyecto ya está implementada y su evidencia focalizada está actualizada. La persistencia de mantenimiento (revisiones efectivas, modelos y migración aditiva) queda diferida a una unidad revisada posterior.

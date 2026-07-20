@@ -11,7 +11,8 @@
 
 import type { FloorPlan, LocationMarker, PrismaClient } from '@mantemap/database';
 import prisma from '@mantemap/database';
-import { NotFoundError } from '@mantemap/shared';
+import { ConflictError, NotFoundError } from '@mantemap/shared';
+import { runSerializable } from './transaction-repository';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +50,68 @@ export type UpdateMarkerData = {
   strokeColor?: string;
   strokeWidth?: number;
 };
+
+// ---------------------------------------------------------------------------
+// Project-scoped ownership resolvers
+// ---------------------------------------------------------------------------
+
+export async function findProjectLocationById(
+  projectId: string,
+  locationId: string,
+  client: PrismaClient = prisma
+) {
+  return client.location.findFirst({ where: { id: locationId, projectId } });
+}
+
+export async function findProjectFloorPlanById(
+  projectId: string,
+  floorPlanId: string,
+  client: PrismaClient = prisma
+): Promise<FloorPlan | null> {
+  return client.floorPlan.findFirst({
+    where: { id: floorPlanId, active: true, location: { projectId } },
+  });
+}
+
+export async function findProjectMarkerById(
+  projectId: string,
+  floorPlanId: string,
+  markerId: string,
+  client: PrismaClient = prisma
+): Promise<LocationMarker | null> {
+  return client.locationMarker.findFirst({
+    where: {
+      id: markerId,
+      floorPlanId,
+      floorPlan: { location: { projectId } },
+    },
+  });
+}
+
+export async function findProjectItemById(
+  projectId: string,
+  itemId: string,
+  client: PrismaClient = prisma
+) {
+  return client.item.findFirst({ where: { id: itemId, itemType: { projectId } } });
+}
+
+export async function markerItemAssociationExists(
+  floorPlanId: string,
+  itemId: string,
+  excludeMarkerId?: string,
+  client: PrismaClient = prisma
+): Promise<boolean> {
+  const marker = await client.locationMarker.findFirst({
+    where: {
+      floorPlanId,
+      itemId,
+      ...(excludeMarkerId ? { id: { not: excludeMarkerId } } : {}),
+    },
+    select: { id: true },
+  });
+  return marker !== null;
+}
 
 // ---------------------------------------------------------------------------
 // FloorPlan CRUD
@@ -163,6 +226,23 @@ export async function createMarker(
   });
 }
 
+/**
+ * Atomically reserves an item's marker association for a floor plan.
+ * Serializable isolation plus bounded P2034 retry prevents concurrent creates
+ * from committing the same association until a database constraint is added.
+ */
+export async function createMarkerWithAssociation(
+  floorPlanId: string,
+  data: CreateMarkerData
+): Promise<LocationMarker> {
+  return runSerializable(async (tx) => {
+    if (data.itemId && await markerItemAssociationExists(floorPlanId, data.itemId, undefined, tx)) {
+      throw new ConflictError('Item is already associated with a marker on this floor plan');
+    }
+    return createMarker(floorPlanId, data, tx);
+  });
+}
+
 export async function findMarkerById(
   floorPlanId: string,
   markerId: string,
@@ -197,6 +277,19 @@ export async function updateMarker(
   return client.locationMarker.update({
     where: { id: markerId },
     data,
+  });
+}
+
+export async function updateMarkerWithAssociation(
+  floorPlanId: string,
+  markerId: string,
+  data: UpdateMarkerData
+): Promise<LocationMarker> {
+  return runSerializable(async (tx) => {
+    if (data.itemId && await markerItemAssociationExists(floorPlanId, data.itemId, markerId, tx)) {
+      throw new ConflictError('Item is already associated with a marker on this floor plan');
+    }
+    return updateMarker(floorPlanId, markerId, data, tx);
   });
 }
 
